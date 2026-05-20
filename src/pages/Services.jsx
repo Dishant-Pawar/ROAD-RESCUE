@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 
-export default function Services({ setPage }) {
+export default function Services({ setPage, triggerSOS }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -131,13 +131,13 @@ export default function Services({ setPage }) {
   ];
 
   return (
-    <div className="relative min-h-[calc(100vh-80px)] flex flex-col">
+    <div className="relative min-h-[calc(100vh-80px)] flex flex-col bg-background">
       <canvas ref={canvasRef} className="particles-canvas" />
 
       <main className="flex-grow flex flex-col items-center justify-center py-12 px-6 md:px-10 w-full max-w-7xl mx-auto relative z-10">
         {/* Hero Section */}
         <section className="text-center mb-16 max-w-3xl">
-          <h1 className="text-4xl md:text-5xl font-display-lg text-primary-container font-bold mb-4 neon-glow">
+          <h1 className="text-4xl md:text-5xl font-display-lg text-primary-container font-bold mb-4 neon-glow animate-pulse">
             Precision Rescue Solutions
           </h1>
           <p className="font-body-lg text-body-lg text-on-surface-variant">
@@ -168,7 +168,7 @@ export default function Services({ setPage }) {
                     </p>
                   </div>
                   <button 
-                    onClick={() => setPage('emergency')}
+                    onClick={() => triggerSOS('accident')}
                     className="bg-error/20 border border-error text-error w-full py-3 rounded font-label-caps text-label-caps uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-error hover:text-on-error transition-all"
                   >
                     Deploy Priority Unit <span className="material-symbols-outlined text-sm">arrow_forward</span>
@@ -196,7 +196,7 @@ export default function Services({ setPage }) {
                   </p>
                 </div>
                 <button 
-                  onClick={() => setPage('tracking')}
+                  onClick={() => triggerSOS(service.id)}
                   className="btn-ghost w-full py-3 rounded text-primary font-label-caps text-label-caps uppercase tracking-wider flex items-center justify-center gap-2 group-hover:bg-primary-container/20"
                 >
                   Deploy Unit <span className="material-symbols-outlined text-sm">arrow_forward</span>

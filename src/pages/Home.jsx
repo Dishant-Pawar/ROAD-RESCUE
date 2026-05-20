@@ -1,14 +1,15 @@
 import React from 'react';
 
-export default function Home({ setPage }) {
+export default function Home({ setPage, triggerSOS }) {
   return (
     <div className="relative min-h-[calc(100vh-80px)] flex flex-col bg-hero-pattern">
       {/* Background Image with Overlay */}
-      <div className="absolute inset-0 z-0">
+      <div className="absolute inset-0 z-0 bg-gradient-to-tr from-[#131313] via-[#1a1a1a] to-[#222]">
         <img 
           alt="Hero Background" 
           className="w-full h-full object-cover opacity-25 mix-blend-luminosity" 
           src="https://lh3.googleusercontent.com/aida-public/AB6AXuBJtX6N5jghzk5ixQOLzi20Hw-tHDYBdDUQN25WdnUn4GrbIZIIbJkpYNnGacAygarrFuts2FvgAky0DE_7qNPvbJhboQSV606vbr-Ts0_EdH1O8IpP1KU2h5LzcHnlWGyI2IJGIlQVUfjc33bEnDyHVgw5_z8P9HHxzqrzTZEROrQ5AR1rpX-iqmUJdApkCo_Bah0rPHBlfPkVi1Q39cDDkMLOeKJYuTPAp1fnlWvdLKoT4QdQwBjvw64pQ-cFTlvhjFD8vX58Xnk"
+          onError={(e) => { e.target.style.display = 'none'; }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/80 to-background"></div>
       </div>
@@ -30,7 +31,7 @@ export default function Home({ setPage }) {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 pt-4">
             <button 
-              onClick={() => setPage('emergency')}
+              onClick={() => triggerSOS('battery')}
               className="bg-gradient-to-r from-secondary-container to-secondary text-on-secondary-container font-label-caps text-label-caps px-8 py-4 rounded font-bold hover:shadow-[0_0_25px_rgba(255,138,0,0.6)] transition-all flex items-center justify-center gap-2 pulse-animation"
             >
               <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
@@ -57,7 +58,7 @@ export default function Home({ setPage }) {
               </div>
             </div>
             <div>
-              <div className="text-5xl md:text-6xl font-headline-lg text-primary-container font-bold">12m</div>
+              <div className="text-5xl md:text-6xl font-headline-lg text-primary-container font-bold">13m</div>
               <div className="font-title-md text-title-md text-on-surface mt-1">Avg Response Time</div>
               <p className="font-body-sm text-body-sm text-on-surface-variant/70 mt-2">in your current sector</p>
             </div>
@@ -87,13 +88,14 @@ export default function Home({ setPage }) {
             onClick={() => setPage('services')}
             className="md:col-span-8 glass-panel rounded-xl p-6 group hover:border-primary/50 transition-colors relative overflow-hidden h-80 flex flex-col justify-end cursor-pointer"
           >
-            <div className="absolute inset-0 bg-surface-container-high opacity-50 z-0">
+            <div className="absolute inset-0 bg-surface-container-high/20 opacity-50 z-0">
               <img 
                 alt="Tactical Map Interface" 
                 className="w-full h-full object-cover mix-blend-screen opacity-40 group-hover:scale-105 transition-transform duration-700" 
                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuAPvLNxX6uZagaiZpJi9O8oPlsBVZykZ-vaiV1fzqWwSrkSAG3CsF2f2gDH4VAEgG1fB9W9c8z7FYDecTP60DULFhjYuYuvJTsYgxmYo6SlOAsMfTXx6V7cuFRnCATxk8IPcZXq7pbiZzZNg-DGNF08MSsiSkWKSsnb71URD8aNGMbmyPeh4YhleD59aOrX7awunmvS8IU_UfZ7KJRoVr-wEM29XgXVodLqE3RVdS1bglNJrtj9EUd360RytFwkS9FT2XdA_BFeS1M"
+                onError={(e) => { e.target.style.display = 'none'; }}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent"></div>
+              <div className="absolute inset-0 bg-gradient-to-t from-[#131313] via-background/40 to-transparent"></div>
             </div>
             <div className="relative z-10">
               <div className="w-12 h-12 rounded bg-surface/80 border border-outline-variant/30 flex items-center justify-center text-primary-container mb-4 backdrop-blur-md">
@@ -108,7 +110,7 @@ export default function Home({ setPage }) {
 
           {/* Service Card 2 */}
           <div 
-            onClick={() => setPage('services')}
+            onClick={() => triggerSOS('fuel')}
             className="md:col-span-4 glass-panel rounded-xl p-6 group hover:border-primary/50 transition-colors flex flex-col h-80 cursor-pointer"
           >
             <div className="w-12 h-12 rounded bg-surface/50 border border-outline-variant/30 flex items-center justify-center text-primary-container mb-auto">
@@ -124,7 +126,7 @@ export default function Home({ setPage }) {
 
           {/* Service Card 3 */}
           <div 
-            onClick={() => setPage('services')}
+            onClick={() => triggerSOS('tire')}
             className="md:col-span-4 glass-panel rounded-xl p-6 group hover:border-primary/50 transition-colors flex flex-col h-80 cursor-pointer"
           >
             <div className="w-12 h-12 rounded bg-surface/50 border border-outline-variant/30 flex items-center justify-center text-primary-container mb-auto">

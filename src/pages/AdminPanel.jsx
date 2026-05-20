@@ -1,23 +1,15 @@
-import React, { useState } from 'react';
+import React from 'react';
 
-export default function AdminPanel({ setPage }) {
-  const [activeTickets, setActiveTickets] = useState([
-    { id: 101, type: 'Engine Failure', time: '2m ago', loc: 'I-95 Northbound, Mile 42', req: 'Heavy Tow', assigned: false },
-    { id: 102, type: 'Flat Tire', time: '12m ago', loc: 'Downtown, 4th & Main', req: 'Unit-Delta', assigned: true, eta: '5m' },
-    { id: 103, type: 'Lockout', time: '15m ago', loc: 'Westside Mall Parking', req: 'Standard', assigned: false }
-  ]);
+export default function AdminPanel({ 
+  setPage, 
+  adminIncidents, 
+  assignIncident, 
+  completeIncident, 
+  cancelIncident 
+}) {
 
-  const handleAssignTicket = (id) => {
-    setActiveTickets((prev) =>
-      prev.map((ticket) => {
-        if (ticket.id === id) {
-          alert(`🚒 Incident #${id} successfully assigned to nearest active carrier drone. Dispatch ledger synchronized.`);
-          return { ...ticket, assigned: true, req: 'Unit-Alpha (ETA 3m)' };
-        }
-        return ticket;
-      })
-    );
-  };
+  const activeRescues = adminIncidents.filter((t) => t.assigned).length;
+  const criticalAlerts = adminIncidents.filter((t) => !t.assigned).length;
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto w-full flex flex-col gap-6">
@@ -55,9 +47,9 @@ export default function AdminPanel({ setPage }) {
               <span className="material-symbols-outlined text-primary bg-primary/10 p-2 rounded">emergency</span>
             </div>
             <div className="relative z-10 flex items-end gap-3">
-              <span className="text-4xl md:text-5xl font-display-lg text-on-surface font-bold">18</span>
+              <span className="text-4xl md:text-5xl font-display-lg text-on-surface font-bold">{activeRescues}</span>
               <span className="font-body-sm text-body-sm text-primary mb-2 flex items-center">
-                <span className="material-symbols-outlined text-[14px]">arrow_upward</span> 12%
+                <span className="material-symbols-outlined text-[14px]">arrow_upward</span> 100%
               </span>
             </div>
           </div>
@@ -70,11 +62,15 @@ export default function AdminPanel({ setPage }) {
               <span className="material-symbols-outlined text-secondary bg-secondary-container/10 p-2 rounded">warning</span>
             </div>
             <div className="relative z-10 flex items-end gap-3">
-              <span className="text-4xl md:text-5xl font-display-lg text-on-surface font-bold">3</span>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-2 h-2 rounded-full bg-secondary pulse-dot-emergency"></div>
-                <span className="font-body-sm text-body-sm text-secondary font-semibold">ACTION REQ.</span>
-              </div>
+              <span className="text-4xl md:text-5xl font-display-lg text-on-surface font-bold">{criticalAlerts}</span>
+              {criticalAlerts > 0 ? (
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-secondary pulse-dot-emergency"></div>
+                  <span className="font-body-sm text-body-sm text-secondary font-semibold">ACTION REQ.</span>
+                </div>
+              ) : (
+                <span className="font-body-sm text-body-sm text-on-surface-variant/60 mb-2">STANDBY</span>
+              )}
             </div>
           </div>
 
@@ -86,7 +82,7 @@ export default function AdminPanel({ setPage }) {
             </div>
             <div className="flex items-end gap-3">
               <span className="text-4xl md:text-5xl font-display-lg text-on-surface font-bold">
-                14<span className="text-lg font-title-md text-on-surface-variant ml-1">min</span>
+                12<span className="text-lg font-title-md text-on-surface-variant ml-1">min</span>
               </span>
               <span className="font-body-sm text-body-sm text-primary mb-2 flex items-center">
                 <span className="material-symbols-outlined text-[14px]">arrow_downward</span> 2m
@@ -130,6 +126,7 @@ export default function AdminPanel({ setPage }) {
               alt="Metropolitan Tactical Radar Map" 
               className="w-full h-full object-cover opacity-50 mix-blend-luminosity brightness-50" 
               src="https://lh3.googleusercontent.com/aida-public/AB6AXuCONQtevrHijxHUD0MGtLkVURRb7LpFgcUmAbYD5iPl6RH3g13HI1CsoLU7msfevpUAxZb8NOugO9d_qUsJUBhDiFuUVk2iXJTn_Bwlrn78ksZNuN4b6S3bA4Y1I4F-tZdKpk6kWcAf2FREaOlL_R3YbvKRXIkRG5ZDFYHg1QMQBpVI0uzW35xC2H7wsKpr1g9gF3CnukZCJATxniaZrIeuKKAtoSdS9Ytq87HiOoi2Su1Hs-1h8HIWoB57Zo5Ab7sDQuBUDcMqMmg"
+              onError={(e) => { e.target.style.display = 'none'; }}
             />
             
             {/* Map Overlays / Pointers */}
@@ -165,61 +162,95 @@ export default function AdminPanel({ setPage }) {
               Active Tickets
             </h3>
             <span className="bg-surface-variant text-on-surface px-2.5 py-0.5 rounded font-label-caps text-label-caps text-[10px]">
-              {activeTickets.filter((t) => !t.assigned).length} Pending
+              {criticalAlerts} Pending
             </span>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
-            {activeTickets.map((ticket) => {
-              if (ticket.assigned) {
+            {adminIncidents.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                <span className="material-symbols-outlined text-on-surface-variant/40 text-[36px] mb-2">check_circle</span>
+                <p className="font-body-sm text-body-sm text-on-surface-variant/80">Queue empty. All incidents cleared.</p>
+              </div>
+            ) : (
+              adminIncidents.map((ticket) => {
+                if (ticket.assigned) {
+                  return (
+                    <div key={ticket.id} className="glass-panel bg-surface-container-low/40 backdrop-blur-3xl border-outline-variant/10 rounded-lg p-3 flex flex-col gap-2 hover:bg-surface-variant/20 transition-colors">
+                      <div className="flex justify-between items-center">
+                        <span className="font-label-caps text-label-caps text-primary flex items-center gap-1 text-[10px] font-bold">
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                          {ticket.type}
+                        </span>
+                        <span className="font-label-caps text-label-caps text-on-surface-variant/60 text-[10px]">{ticket.time}</span>
+                      </div>
+                      <p className="font-body-sm text-body-sm text-on-surface font-semibold">{ticket.loc}</p>
+                      
+                      <div className="flex justify-between items-center mt-1">
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 rounded-full bg-surface-variant overflow-hidden border border-outline-variant flex-shrink-0">
+                            <img 
+                              alt="Mechanic headshot" 
+                              className="w-full h-full object-cover" 
+                              src={ticket.driverAvatar || "https://lh3.googleusercontent.com/aida-public/AB6AXuDQvr_HDAe8dIuPOCeH_hCSd8oy2NmxlGvMzAXNKZDtXqxmAQgsaGSbBp5nFz1F94bhRK9iZRp1PDfy-7_3e-n4HIisgKFOcvr6pG4Cv4oPIneIbmFH9Sqz2u75z1w8iPk2Z5oty9UnXzkmiSdHTB3bl_fJa8WUNPXSIxYtC-S6m6-wYXVBvz6dJYp08B6AZbwAhF4TX5NrkjgjyvQvPkZQY-4drXs-3zXAg-CXmBGaSn1SE_x-a1PCjSgYqcK0sA0xhEeAkhUcRX4"}
+                              onError={(e) => { e.target.style.display = 'none'; }}
+                            />
+                          </div>
+                          <span className="font-body-sm text-body-sm text-on-surface-variant/80 text-[11px] font-medium truncate max-w-[120px]">
+                            {ticket.driverName} (ETA {ticket.eta}m)
+                          </span>
+                        </div>
+                        
+                        <div className="flex gap-1.5">
+                          <button 
+                            onClick={() => cancelIncident(ticket.id)}
+                            className="bg-error/10 text-error border border-error/20 px-2 py-0.5 rounded font-label-caps text-[9px] hover:bg-error hover:text-on-error transition-all font-bold"
+                          >
+                            Abrupt
+                          </button>
+                          <button 
+                            onClick={() => completeIncident(ticket.id)}
+                            className="bg-primary/20 text-primary border border-primary/30 px-2.5 py-1 rounded font-label-caps text-[9px] hover:bg-primary hover:text-on-primary transition-all font-bold"
+                          >
+                            Resolve
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
                 return (
-                  <div key={ticket.id} className="glass-panel bg-surface-container-low/40 backdrop-blur-3xl border-outline-variant/10 rounded-lg p-3 flex flex-col gap-2 hover:bg-surface-variant/20 transition-colors">
+                  <div key={ticket.id} className="glass-panel-active bg-surface-container-low/40 backdrop-blur-3xl border-outline-variant/10 rounded-lg p-3 flex flex-col gap-2 hover:bg-surface-variant/20 transition-colors animate-pulse">
                     <div className="flex justify-between items-center">
-                      <span className="font-label-caps text-label-caps text-primary flex items-center gap-1 text-[10px] font-bold">
-                        <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                      <span className="font-label-caps text-label-caps text-secondary flex items-center gap-1 text-[10px] font-bold">
+                        <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-ping"></span>
                         {ticket.type}
                       </span>
                       <span className="font-label-caps text-label-caps text-on-surface-variant/60 text-[10px]">{ticket.time}</span>
                     </div>
                     <p className="font-body-sm text-body-sm text-on-surface font-semibold">{ticket.loc}</p>
                     <div className="flex justify-between items-center mt-1">
-                      <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 rounded-full bg-surface-variant overflow-hidden border border-outline-variant flex-shrink-0">
-                          <img 
-                            alt="Mechanic small headshot" 
-                            className="w-full h-full object-cover" 
-                            src="https://lh3.googleusercontent.com/aida-public/AB6AXuDQvr_HDAe8dIuPOCeH_hCSd8oy2NmxlGvMzAXNKZDtXqxmAQgsaGSbBp5nFz1F94bhRK9iZRp1PDfy-7_3e-n4HIisgKFOcvr6pG4Cv4oPIneIbmFH9Sqz2u75z1w8iPk2Z5oty9UnXzkmiSdHTB3bl_fJa8WUNPXSIxYtC-S6m6-wYXVBvz6dJYp08B6AZbwAhF4TX5NrkjgjyvQvPkZQY-4drXs-3zXAg-CXmBGaSn1SE_x-a1PCjSgYqcK0sA0xhEeAkhUcRX4"
-                          />
-                        </div>
-                        <span className="font-body-sm text-body-sm text-on-surface-variant/80 text-[11px] font-medium">{ticket.req}</span>
+                      <span className="font-body-sm text-body-sm text-on-surface-variant/60 text-[11px] truncate max-w-[120px]">Req: {ticket.req}</span>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => cancelIncident(ticket.id)}
+                          className="bg-error/10 text-error border border-error/20 px-2 py-0.5 rounded font-label-caps text-[9px] hover:bg-error hover:text-on-error transition-all font-bold"
+                        >
+                          Cancel
+                        </button>
+                        <button 
+                          onClick={() => assignIncident(ticket.id)}
+                          className="bg-secondary/20 text-secondary border border-secondary/30 px-3 py-1 rounded font-label-caps text-[9px] hover:bg-secondary hover:text-on-secondary transition-all font-bold animate-bounce"
+                        >
+                          Assign
+                        </button>
                       </div>
                     </div>
                   </div>
                 );
-              }
-
-              return (
-                <div key={ticket.id} className="glass-panel-active bg-surface-container-low/40 backdrop-blur-3xl border-outline-variant/10 rounded-lg p-3 flex flex-col gap-2 hover:bg-surface-variant/20 transition-colors">
-                  <div className="flex justify-between items-center">
-                    <span className="font-label-caps text-label-caps text-secondary flex items-center gap-1 text-[10px] font-bold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                      {ticket.type}
-                    </span>
-                    <span className="font-label-caps text-label-caps text-on-surface-variant/60 text-[10px]">{ticket.time}</span>
-                  </div>
-                  <p className="font-body-sm text-body-sm text-on-surface font-semibold">{ticket.loc}</p>
-                  <div className="flex justify-between items-center mt-1">
-                    <span className="font-body-sm text-body-sm text-on-surface-variant/60 text-[11px]">Req: {ticket.req}</span>
-                    <button 
-                      onClick={() => handleAssignTicket(ticket.id)}
-                      className="bg-secondary/20 text-secondary border border-secondary/30 px-3 py-1 rounded font-label-caps text-[9px] hover:bg-secondary hover:text-on-secondary transition-all font-bold"
-                    >
-                      Assign
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+              })
+            )}
           </div>
         </div>
 

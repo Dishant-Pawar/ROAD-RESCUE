@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function Dashboard({ setPage }) {
+export default function Dashboard({ setPage, activeIncident, completedIncidents }) {
   const [activeTab, setActiveTab] = useState('month');
 
   return (
@@ -25,71 +25,126 @@ export default function Dashboard({ setPage }) {
       {/* Bento Grid Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 auto-rows-min">
         
-        {/* Active Service Widget (Spans 8 cols) */}
-        <div className="glass-panel glass-panel-active rounded-xl p-6 lg:col-span-8 flex flex-col relative overflow-hidden shadow-2xl">
-          <div className="absolute top-0 left-0 w-full h-1 bg-surface-container-high">
-            <div className="h-full progress-bar-fill w-2/3"></div>
-          </div>
-          
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-2 h-2 rounded-full bg-primary-container pulse-dot"></div>
-                <span className="font-label-caps text-label-caps text-primary text-glow text-[11px]">EN ROUTE</span>
-              </div>
-              <h3 className="text-xl font-title-md text-on-surface font-bold">Tow Unit #442</h3>
-            </div>
-            <div className="text-right">
-              <div className="text-2xl font-headline-lg text-on-surface font-bold">
-                12 <span className="text-on-surface-variant font-body-sm text-sm">MIN</span>
-              </div>
-              <div className="font-label-caps text-label-caps text-on-surface-variant text-[10px]">ETA</div>
-            </div>
-          </div>
-
-          <div className="flex-grow flex items-center justify-center relative min-h-[150px] mb-6 rounded-lg overflow-hidden border border-outline-variant/20 bg-surface-container">
-            <img 
-              alt="Live Micro Tracking Map" 
-              className="absolute inset-0 w-full h-full object-cover opacity-40" 
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuAYcR7Ibvp2FJExXuMvebxJRr0lODvQDA0-m3Uvtrf6k-y-0BUQYZudI5lSvpyKXYcKv8VucWML0AhyN0LxnLF2BA940oc5afMnDI3FpWiFbIx-5P2L6HPwPcRdpC5j6SihehAR3n7Wn471gVCnfUsh8lkHYtopoSY_vT257UQMaCbwa_bxB9sgj2eT1dcYqBNJRUBwGXe1qnqvCBAO9N0B52YgPw411pGonwq33mJardpg5ohPHgeitG0BNruxZStQb8g_Ytrr_NE"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent"></div>
-            <div className="absolute top-1/2 left-1/4 w-3 h-3 bg-secondary rounded-full shadow-[0_0_15px_#ff8a00]"></div>
-            <div className="absolute top-1/2 right-1/4 w-4 h-4 bg-primary-container rounded-full pulse-dot">
-              <div className="absolute -inset-1 bg-primary-container/20 rounded-full animate-ping"></div>
+        {activeIncident ? (
+          /* Active Service Widget (Spans 8 cols) - Dynamic State */
+          <div className="glass-panel glass-panel-active rounded-xl p-6 lg:col-span-8 flex flex-col relative overflow-hidden shadow-2xl">
+            <div className="absolute top-0 left-0 w-full h-1 bg-surface-container-high">
+              <div className={`h-full progress-bar-fill ${activeIncident.assigned ? 'w-2/3' : 'w-1/3 animate-pulse'}`}></div>
             </div>
             
-            <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-              <path d="M 180 75 Q 300 45 420 75" fill="none" stroke="url(#blue-grad)" strokeDasharray="4 4" strokeWidth="2"></path>
-              <defs>
-                <linearGradient id="blue-grad" x1="0%" x2="100%" y1="0%" y2="0%">
-                  <stop offset="0%" stopColor="#ff8a00"></stop>
-                  <stop offset="100%" stopColor="#00f2ff"></stop>
-                </linearGradient>
-              </defs>
-            </svg>
-          </div>
-
-          <div className="flex justify-between items-center mt-auto pt-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center border border-outline-variant/30">
-                <span className="material-symbols-outlined text-on-surface-variant">person</span>
-              </div>
+            <div className="flex justify-between items-start mb-6">
               <div>
-                <div className="font-body-sm text-body-sm text-on-surface font-semibold">Driver: Marcus T.</div>
-                <div className="font-label-caps text-label-caps text-on-surface-variant flex items-center gap-1 text-[10px]">
-                  <span className="material-symbols-outlined text-[12px] text-secondary">star</span> 4.9
+                <div className="flex items-center gap-2 mb-1">
+                  <div className={`w-2 h-2 rounded-full pulse-dot ${activeIncident.assigned ? 'bg-primary-container' : 'bg-secondary animate-pulse'}`}></div>
+                  <span className={`font-label-caps text-label-caps text-glow text-[11px] ${activeIncident.assigned ? 'text-primary' : 'text-secondary'}`}>
+                    {activeIncident.assigned ? 'EN ROUTE' : 'PENDING DISPATCH'}
+                  </span>
                 </div>
+                <h3 className="text-xl font-title-md text-on-surface font-bold">
+                  {activeIncident.assigned ? (activeIncident.vehicle || 'Emergency Unit') : 'Locating Dispatch Unit...'}
+                </h3>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-headline-lg text-on-surface font-bold">
+                  {activeIncident.assigned ? activeIncident.eta : '--'} <span className="text-on-surface-variant font-body-sm text-sm">MIN</span>
+                </div>
+                <div className="font-label-caps text-label-caps text-on-surface-variant text-[10px]">ETA</div>
               </div>
             </div>
-            <button 
-              onClick={() => setPage('tracking')}
-              className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center hover:bg-surface-variant transition-colors border border-outline-variant/30 shadow-md"
-            >
-              <span className="material-symbols-outlined text-on-surface text-[18px]">call</span>
-            </button>
+
+            <div className="flex-grow flex items-center justify-center relative min-h-[150px] mb-6 rounded-lg overflow-hidden border border-outline-variant/20 bg-surface-container">
+              <img 
+                alt="Live Micro Tracking Map" 
+                className="absolute inset-0 w-full h-full object-cover opacity-40" 
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuAYcR7Ibvp2FJExXuMvebxJRr0lODvQDA0-m3Uvtrf6k-y-0BUQYZudI5lSvpyKXYcKv8VucWML0AhyN0LxnLF2BA940oc5afMnDI3FpWiFbIx-5P2L6HPwPcRdpC5j6SihehAR3n7Wn471gVCnfUsh8lkHYtopoSY_vT257UQMaCbwa_bxB9sgj2eT1dcYqBNJRUBwGXe1qnqvCBAO9N0B52YgPw411pGonwq33mJardpg5ohPHgeitG0BNruxZStQb8g_Ytrr_NE"
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent"></div>
+              
+              {activeIncident.assigned ? (
+                <>
+                  <div className="absolute top-1/2 left-1/4 w-3 h-3 bg-secondary rounded-full shadow-[0_0_15px_#ff8a00]"></div>
+                  <div className="absolute top-1/2 right-1/4 w-4 h-4 bg-primary-container rounded-full pulse-dot">
+                    <div className="absolute -inset-1 bg-primary-container/20 rounded-full animate-ping"></div>
+                  </div>
+                  
+                  <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
+                    <path d="M 180 75 Q 300 45 420 75" fill="none" stroke="url(#blue-grad)" strokeDasharray="4 4" strokeWidth="2"></path>
+                    <defs>
+                      <linearGradient id="blue-grad" x1="0%" x2="100%" y1="0%" y2="0%">
+                        <stop offset="0%" stopColor="#ff8a00"></stop>
+                        <stop offset="100%" stopColor="#00f2ff"></stop>
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                </>
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center bg-background/30 backdrop-blur-sm">
+                  <div className="flex flex-col items-center gap-2">
+                    <span className="material-symbols-outlined text-[32px] text-secondary animate-bounce">satellite_alt</span>
+                    <span className="font-label-caps text-label-caps text-secondary text-[10px] tracking-wider font-bold">TRANSMITTING GPS GRID...</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-between items-center mt-auto pt-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center border border-outline-variant/30 overflow-hidden">
+                  {activeIncident.assigned && activeIncident.driverAvatar ? (
+                    <img 
+                      alt="Driver Avatar" 
+                      className="w-full h-full object-cover" 
+                      src={activeIncident.driverAvatar}
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                  ) : (
+                    <span className="material-symbols-outlined text-on-surface-variant">person</span>
+                  )}
+                </div>
+                <div>
+                  <div className="font-body-sm text-body-sm text-on-surface font-semibold">
+                    {activeIncident.assigned ? `Driver: ${activeIncident.driverName}` : 'Assigning Specialist...'}
+                  </div>
+                  <div className="font-label-caps text-label-caps text-on-surface-variant flex items-center gap-1 text-[10px]">
+                    <span className="material-symbols-outlined text-[12px] text-secondary">star</span> 
+                    {activeIncident.assigned ? '4.9' : '--'}
+                  </div>
+                </div>
+              </div>
+              <button 
+                onClick={() => setPage(activeIncident.assigned ? 'tracking' : 'emergency')}
+                className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center hover:bg-surface-variant transition-colors border border-outline-variant/30 shadow-md"
+              >
+                <span className="material-symbols-outlined text-on-surface text-[18px]">
+                  {activeIncident.assigned ? 'forum' : 'satellite_alt'}
+                </span>
+              </button>
+            </div>
           </div>
-        </div>
+        ) : (
+          /* Active Service Widget (Spans 8 cols) - Safe/Idle State */
+          <div className="glass-panel rounded-xl p-6 lg:col-span-8 flex flex-col justify-center items-center text-center shadow-2xl relative overflow-hidden min-h-[350px]">
+            <div className="absolute inset-0 z-0 opacity-10 pointer-events-none" style={{ backgroundImage: "conic-gradient(from 0deg at 50% 50%, transparent 0deg, rgba(0, 242, 255, 0.05) 60deg, transparent 60deg)", animation: "spin-kf 30s linear infinite" }}></div>
+            
+            <div className="relative z-10 flex flex-col items-center gap-4 max-w-md">
+              <div className="w-16 h-16 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-2 shadow-[0_0_15px_rgba(0,242,255,0.2)]">
+                <span className="material-symbols-outlined text-[32px]">shield</span>
+              </div>
+              <h3 className="text-2xl font-title-md text-on-surface font-bold">All Vehicles Secure</h3>
+              <p className="font-body-sm text-body-sm text-on-surface-variant/80 leading-relaxed">
+                Your registered fleet is safe and operational. Active real-time satellite telemetry confirms zero mechanical anomalies or warning beacon indicators.
+              </p>
+              <button 
+                onClick={() => setPage('emergency')}
+                className="mt-2 py-3 px-8 rounded bg-gradient-to-r from-primary-container to-primary text-on-primary-container font-label-caps text-label-caps uppercase font-bold tracking-wider hover:shadow-[0_0_20px_rgba(0,242,255,0.4)] transition-all flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[18px]">emergency</span>
+                LAUNCH EMERGENCY SOS
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* System Alerts Panel (Spans 4 cols) */}
         <div className="glass-panel rounded-xl p-6 lg:col-span-4 flex flex-col shadow-2xl">
@@ -98,7 +153,6 @@ export default function Dashboard({ setPage }) {
             <span className="material-symbols-outlined text-on-surface-variant/80">notifications</span>
           </div>
           <div className="flex flex-col gap-4 overflow-y-auto pr-2 custom-scrollbar">
-            {/* Relying strictly on negative spacing and tonal depth shifts */}
             <div className="flex gap-3 items-start pb-4 bg-surface-container-low/30 p-3 rounded-lg">
               <div className="mt-1 w-2.5 h-2.5 rounded-full bg-secondary shrink-0"></div>
               <div>
@@ -222,7 +276,6 @@ export default function Dashboard({ setPage }) {
           
           <table className="w-full text-left min-w-[600px]">
             <thead>
-              {/* Relying strictly on negative spacing and tonal depth shifts */}
               <tr className="text-on-surface-variant/60 font-label-caps text-label-caps text-[11px] bg-surface-container-low/50 rounded-lg">
                 <th className="p-3 font-semibold rounded-l-lg">ID</th>
                 <th className="p-3 font-semibold">Date</th>
@@ -233,50 +286,42 @@ export default function Dashboard({ setPage }) {
               </tr>
             </thead>
             <tbody className="font-body-sm text-body-sm">
-              <tr className="hover:bg-surface-container-low/40 transition-colors">
-                <td className="p-3 text-primary font-label-caps text-label-caps text-xs">#RR-092</td>
-                <td className="p-3 text-on-surface">Oct 24, 2026</td>
-                <td className="p-3 text-on-surface">Flatbed Tow</td>
-                <td className="p-3 text-on-surface-variant">Tesla Model S</td>
-                <td className="p-3">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary font-label-caps text-[9px] font-bold">
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
-                    COMPLETED
-                  </span>
-                </td>
-                <td className="p-3 text-right text-on-surface font-label-caps text-label-caps text-xs font-semibold">$145.00</td>
-              </tr>
-              <tr className="bg-surface-container-low/20 hover:bg-surface-container-low/40 transition-colors">
-                <td className="p-3 text-primary font-label-caps text-label-caps text-xs">#RR-091</td>
-                <td className="p-3 text-on-surface">Oct 12, 2026</td>
-                <td className="p-3 text-on-surface">Jump Start</td>
-                <td className="p-3 text-on-surface-variant">Ford Transit</td>
-                <td className="p-3">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary font-label-caps text-[9px] font-bold">
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
-                    COMPLETED
-                  </span>
-                </td>
-                <td className="p-3 text-right text-on-surface font-label-caps text-label-caps text-xs font-semibold">$75.00</td>
-              </tr>
-              <tr className="hover:bg-surface-container-low/40 transition-colors">
-                <td className="p-3 text-primary font-label-caps text-label-caps text-xs">#RR-090</td>
-                <td className="p-3 text-on-surface">Sep 05, 2026</td>
-                <td className="p-3 text-on-surface">Winch Out</td>
-                <td className="p-3 text-on-surface-variant">Jeep Wrangler</td>
-                <td className="p-3">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary-container/10 border border-secondary-container/20 text-secondary font-label-caps text-[9px] font-bold">
-                    <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                    CANCELLED
-                  </span>
-                </td>
-                <td className="p-3 text-right text-on-surface font-label-caps text-label-caps text-xs font-semibold">$0.00</td>
-              </tr>
+              {completedIncidents.map((incident, idx) => (
+                <tr 
+                  key={incident.id} 
+                  className={`${idx % 2 === 1 ? 'bg-surface-container-low/20' : ''} hover:bg-surface-container-low/40 transition-colors`}
+                >
+                  <td className="p-3 text-primary font-label-caps text-label-caps text-xs">{incident.id}</td>
+                  <td className="p-3 text-on-surface">{incident.date}</td>
+                  <td className="p-3 text-on-surface">{incident.service}</td>
+                  <td className="p-3 text-on-surface-variant">{incident.vehicle}</td>
+                  <td className="p-3">
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-label-caps text-[9px] font-bold ${
+                      incident.status === 'COMPLETED'
+                        ? 'bg-primary/10 border border-primary/20 text-primary'
+                        : 'bg-secondary/10 border border-secondary/20 text-secondary'
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${incident.status === 'COMPLETED' ? 'bg-primary animate-pulse' : 'bg-secondary'}`}></span>
+                      {incident.status}
+                    </span>
+                  </td>
+                  <td className="p-3 text-right text-on-surface font-label-caps text-label-caps text-xs font-semibold">{incident.cost}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
 
       </div>
+      
+      {/* Spin custom keyframe for safe state loading background */}
+      <style>{`
+        @keyframes spin-kf {
+          100% {
+            transform: rotate(360deg);
+          }
+        }
+      `}</style>
     </div>
   );
 }
