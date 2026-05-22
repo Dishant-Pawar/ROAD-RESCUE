@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { io } from 'socket.io-client';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
 import Footer from './components/Footer';
 import {
   loginUserApi,
+  loginAdminApi,
   getActiveIncidentApi,
   createIncidentApi,
   getAllIncidentsApi,
@@ -11,7 +13,9 @@ import {
   completeIncidentApi,
   cancelIncidentApi,
   addChatMessageApi,
-  getPaymentsApi
+  getPaymentsApi,
+  getVehiclesApi,
+  getNotificationsApi
 } from './utils/api';
 
 // Pages
@@ -25,11 +29,14 @@ import AdminPanel from './pages/AdminPanel';
 export default function App() {
   const [currentPage, setCurrentPage] = useState('home');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
 
   // Synchronized System States
   const [activeIncident, setActiveIncident] = useState(null);
   const [adminIncidents, setAdminIncidents] = useState([]);
   const [completedIncidents, setCompletedIncidents] = useState([]);
+  const [vehicles, setVehicles] = useState([]);
+  const [notifications, setNotifications] = useState([]);
 
   const [notification, setNotification] = useState(null);
 
@@ -41,17 +48,117 @@ export default function App() {
     }, 6000);
   };
 
+  const fetchVehicles = async () => {
+    try {
+      const res = await getVehiclesApi();
+      if (res && res.success && res.data) {
+        setVehicles(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to load vehicles:", err);
+    }
+  };
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await getNotificationsApi();
+      if (res && res.success && res.data) {
+        setNotifications(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to load notifications:", err);
+    }
+  };
+
+  const fetchHistory = async () => {
+    try {
+      const paymentsRes = await getPaymentsApi();
+      if (paymentsRes && paymentsRes.success && paymentsRes.data) {
+        const formatted = paymentsRes.data.map(p => ({
+          id: p.transactionId,
+          date: new Date(p.createdAt).toLocaleDateString([], { month: 'short', day: '2-digit', year: 'numeric' }),
+          service: p.serviceRequest ? p.serviceRequest.type : 'Road Rescue Assistance',
+          vehicle: p.serviceRequest && p.serviceRequest.customerVehicle ? p.serviceRequest.customerVehicle : 'Tesla Model S Plaid',
+          status: p.status === 'Completed' ? 'COMPLETED' : 'CANCELLED',
+          cost: `$${p.amount.toFixed(2)}`
+        }));
+        setCompletedIncidents(formatted);
+      }
+    } catch (err) {
+      console.error("Failed to load invoices:", err);
+    }
+  };
+
+  const switchAccount = async (role) => {
+    try {
+      if (role === 'admin') {
+        const loginData = await loginAdminApi('admin@roadrescue.com', 'roadrescue123');
+        localStorage.setItem('token', loginData.token);
+        localStorage.setItem('user', JSON.stringify(loginData.user));
+        setCurrentUser(loginData.user);
+        triggerToast('🔑 Switch Confirmed: Command Operator clearance granted.', 'success');
+        setCurrentPage('admin');
+      } else {
+        const loginData = await loginUserApi('user@roadrescue.com', 'roadrescue123');
+        localStorage.setItem('token', loginData.token);
+        localStorage.setItem('user', JSON.stringify(loginData.user));
+        setCurrentUser(loginData.user);
+        triggerToast('👤 Switch Confirmed: Standard Consumer clearance granted.', 'success');
+        setCurrentPage('dashboard');
+      }
+      
+      // Refresh active data
+      try {
+        const activeRes = await getActiveIncidentApi();
+        if (activeRes && activeRes.success) {
+          setActiveIncident(activeRes.data || null);
+        } else {
+          setActiveIncident(null);
+        }
+      } catch (err) {
+        setActiveIncident(null);
+      }
+      await fetchHistory();
+      await fetchVehicles();
+      await fetchNotifications();
+      
+      // Refresh admin list if role is admin
+      if (role === 'admin') {
+        try {
+          const allRes = await getAllIncidentsApi();
+          if (allRes && allRes.success && allRes.data) {
+            const activeOnly = allRes.data.filter(t => t.status === 'Pending' || t.status === 'Assigned');
+            setAdminIncidents(activeOnly);
+          }
+        } catch (e) {
+          setAdminIncidents([]);
+        }
+      } else {
+        setAdminIncidents([]);
+      }
+    } catch (err) {
+      console.error("Failed to switch account:", err);
+      triggerToast('❌ Authorization handshake failed.', 'error');
+    }
+  };
+
   useEffect(() => {
     // 1. Authenticate as the default user or admin if not already logged in
     const initAuth = async () => {
+      let userObj = null;
       try {
         let token = localStorage.getItem('token');
-        if (!token) {
+        let localUserStr = localStorage.getItem('user');
+        if (!token || !localUserStr) {
           const loginData = await loginUserApi('user@roadrescue.com', 'roadrescue123');
           localStorage.setItem('token', loginData.token);
           localStorage.setItem('user', JSON.stringify(loginData.user));
-          console.log("Logged in user:", loginData.user);
+          userObj = loginData.user;
+        } else {
+          userObj = JSON.parse(localUserStr);
         }
+        setCurrentUser(userObj);
+        console.log("Logged in user:", userObj);
       } catch (err) {
         console.error("Autologin user failed:", err);
       }
@@ -72,36 +179,102 @@ export default function App() {
       }
 
       // 3. Fetch completed payments/history
-      try {
-        const paymentsRes = await getPaymentsApi();
-        if (paymentsRes && paymentsRes.success && paymentsRes.data) {
-          const formatted = paymentsRes.data.map(p => ({
-            id: p.transactionId,
-            date: new Date(p.createdAt).toLocaleDateString([], { month: 'short', day: '2-digit', year: 'numeric' }),
-            service: p.serviceRequest ? p.serviceRequest.type : 'Road Rescue Assistance',
-            vehicle: 'Tesla Model S',
-            status: p.status === 'Completed' ? 'COMPLETED' : 'CANCELLED',
-            cost: `$${p.amount.toFixed(2)}`
-          }));
-          setCompletedIncidents(formatted);
-        }
-      } catch (err) {
-        console.error("Failed to load invoices:", err);
-      }
+      await fetchHistory();
 
       // 4. Fetch all incidents to prime Admin Panel
       try {
         const allRes = await getAllIncidentsApi();
         if (allRes && allRes.success && allRes.data) {
-          setAdminIncidents(allRes.data);
+          const activeOnly = allRes.data.filter(t => t.status === 'Pending' || t.status === 'Assigned');
+          setAdminIncidents(activeOnly);
         }
       } catch (err) {
         console.error("Failed to load admin incidents:", err);
       }
+
+      // 5. Fetch registered vehicles
+      await fetchVehicles();
+
+      // 6. Fetch user notifications
+      await fetchNotifications();
     };
     
     initAuth();
 
+    // Setup Socket.io client connection for instantaneous updates
+    const socketUrl = import.meta.env.PROD ? window.location.origin : 'http://localhost:5000';
+    const socket = io(socketUrl);
+
+    socket.on('connect', () => {
+      console.log('🔌 Connected to RoadRescue real-time synchronization grid.');
+    });
+
+    socket.on('ticket_created', (ticket) => {
+      const formatted = { ...ticket, id: ticket.ticketId };
+      setAdminIncidents((prev) => {
+        if (prev.some(t => t.id === formatted.id)) return prev;
+        return [formatted, ...prev];
+      });
+
+      const localUser = JSON.parse(localStorage.getItem('user'));
+      if (localUser && localUser.role === 'admin') {
+        triggerToast(`🚨 New Rescue Beacon Activated: Ticket #${formatted.id}`, 'error');
+      }
+    });
+
+    socket.on('ticket_assigned', (ticket) => {
+      const formatted = { ...ticket, id: ticket.ticketId };
+      setAdminIncidents((prev) => prev.map(t => t.id === formatted.id ? formatted : t));
+      
+      const localUser = JSON.parse(localStorage.getItem('user'));
+      if (localUser && ticket.user === localUser._id) {
+        setActiveIncident(formatted);
+        triggerToast(
+          `🚒 Dispatch Assigned! Driver ${formatted.driverName} is now en route to your sector.`,
+          'success',
+          'Track Rescue',
+          () => setCurrentPage('tracking')
+        );
+      }
+      fetchNotifications();
+    });
+
+    socket.on('ticket_completed', (ticket) => {
+      const formatted = { ...ticket, id: ticket.ticketId };
+      setAdminIncidents((prev) => prev.filter(t => t.id !== formatted.id));
+      
+      const localUser = JSON.parse(localStorage.getItem('user'));
+      if (localUser && ticket.user === localUser._id) {
+        setActiveIncident(null);
+        triggerToast(`💚 Safe Harbor! Rescue #${formatted.id} successfully resolved. All systems green.`, 'success');
+      }
+      
+      fetchHistory();
+      fetchNotifications();
+    });
+
+    socket.on('ticket_cancelled', (ticket) => {
+      const formatted = { ...ticket, id: ticket.ticketId };
+      setAdminIncidents((prev) => prev.filter(t => t.id !== formatted.id));
+      
+      const localUser = JSON.parse(localStorage.getItem('user'));
+      if (localUser && ticket.user === localUser._id) {
+        setActiveIncident(null);
+        triggerToast(`⚠️ Emergency request cancelled. Beacon powered off.`, 'warning');
+      }
+    });
+
+    socket.on('ticket_updated', (ticket) => {
+      const formatted = { ...ticket, id: ticket.ticketId };
+      setAdminIncidents((prev) => prev.map(t => t.id === formatted.id ? formatted : t));
+      
+      const localUser = JSON.parse(localStorage.getItem('user'));
+      if (localUser && ticket.user === localUser._id) {
+        setActiveIncident(formatted);
+      }
+    });
+
+    // Background heartbeat sync check (runs at 20s interval as safeguard)
     const interval = setInterval(async () => {
       try {
         const activeRes = await getActiveIncidentApi();
@@ -111,14 +284,20 @@ export default function App() {
         
         const allRes = await getAllIncidentsApi();
         if (allRes && allRes.success && allRes.data) {
-          setAdminIncidents(allRes.data);
+          const activeOnly = allRes.data.filter(t => t.status === 'Pending' || t.status === 'Assigned');
+          setAdminIncidents(activeOnly);
         }
+        
+        await fetchNotifications();
       } catch (err) {
-        console.error("Polling sync error:", err);
+        console.log("Heartbeat sync check:", err.message);
       }
-    }, 4000);
+    }, 20000);
 
-    return () => clearInterval(interval);
+    return () => {
+      socket.disconnect();
+      clearInterval(interval);
+    };
   }, []);
 
   // SOS Trigger Callback (Consumer Beacon)
@@ -129,10 +308,10 @@ export default function App() {
     }
 
     const issueMapping = {
-      accident: { type: 'Accident Support', req: 'Accident Response' },
+      accident: { type: 'Accident Supportuld', req: 'Accident Response' },
       battery: { type: 'Battery Jumpstart', req: 'Mobile Battery Unit' },
       tire: { type: 'Flat Tire Repair', req: 'Tire Service' },
-      tow: { type: 'Flatbed Towing', req: 'Flatbed Tow' },
+      tow: { type: 'Towing Service', req: 'Flatbed Tow' },
       fuel: { type: 'Fuel Delivery', req: 'L3 Charger & Fuel' },
       flood: { type: 'Flood Rescue', req: 'Winch & Water Rig' },
       mud: { type: 'Mud Rescue', req: 'Winch Rig' },
@@ -198,18 +377,22 @@ export default function App() {
           triggerToast(`💚 Command ledger: Incident #${id} archived as completed.`, 'success');
         }
         
-        // Refresh payments/invoice lists
-        const paymentsRes = await getPaymentsApi();
-        if (paymentsRes && paymentsRes.success && paymentsRes.data) {
-          const formatted = paymentsRes.data.map(p => ({
-            id: p.transactionId,
-            date: new Date(p.createdAt).toLocaleDateString([], { month: 'short', day: '2-digit', year: 'numeric' }),
-            service: p.serviceRequest ? p.serviceRequest.type : 'Road Rescue Assistance',
-            vehicle: 'Tesla Model S',
-            status: p.status === 'Completed' ? 'COMPLETED' : 'CANCELLED',
-            cost: `$${p.amount.toFixed(2)}`
-          }));
-          setCompletedIncidents(formatted);
+        // Refresh payments/invoice lists (wrapped in a nested try-catch to prevent guest/token failures from breaking completion)
+        try {
+          const paymentsRes = await getPaymentsApi();
+          if (paymentsRes && paymentsRes.success && paymentsRes.data) {
+            const formatted = paymentsRes.data.map(p => ({
+              id: p.transactionId,
+              date: new Date(p.createdAt).toLocaleDateString([], { month: 'short', day: '2-digit', year: 'numeric' }),
+              service: p.serviceRequest ? p.serviceRequest.type : 'Road Rescue Assistance',
+              vehicle: p.serviceRequest && p.serviceRequest.customerVehicle ? p.serviceRequest.customerVehicle : 'Tesla Model S Plaid',
+              status: p.status === 'Completed' ? 'COMPLETED' : 'CANCELLED',
+              cost: `$${p.amount.toFixed(2)}`
+            }));
+            setCompletedIncidents(formatted);
+          }
+        } catch (paymentErr) {
+          console.warn("Failed to refresh payments history after resolution:", paymentErr);
         }
       }
     } catch (error) {
@@ -279,9 +462,27 @@ export default function App() {
             setPage={setCurrentPage}
             activeIncident={activeIncident}
             completedIncidents={completedIncidents}
+            vehicles={vehicles}
+            fetchVehicles={fetchVehicles}
+            notifications={notifications}
+            fetchNotifications={fetchNotifications}
           />
         );
       case 'admin':
+        if (!currentUser || currentUser.role !== 'admin') {
+          setTimeout(() => {
+            setCurrentPage('dashboard');
+            triggerToast("❌ Access Denied: Authorized Clearance Level 'admin' required.", 'error');
+          }, 0);
+          return (
+            <div className="min-h-screen bg-background flex items-center justify-center">
+              <div className="text-center flex flex-col gap-2">
+                <span className="material-symbols-outlined text-[48px] text-error animate-pulse">shield</span>
+                <p className="font-title-md font-bold text-on-surface">Securing Command Interface...</p>
+              </div>
+            </div>
+          );
+        }
         return (
           <AdminPanel
             setPage={setCurrentPage}
@@ -335,7 +536,12 @@ export default function App() {
       {/* Sidebar for Logistics Pages (Dashboard/Admin) */}
       {showSidebar && (
         <>
-          <Sidebar currentPage={currentPage} setPage={setCurrentPage} />
+          <Sidebar 
+            currentPage={currentPage} 
+            setPage={setCurrentPage} 
+            currentUser={currentUser}
+            switchAccount={switchAccount}
+          />
           
           {/* Mobile Dashboard/Admin Drawer Toggle Overlay */}
           {isMobileMenuOpen && (
@@ -386,17 +592,19 @@ export default function App() {
                 <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>dashboard</span>
                 <span>DASHBOARD</span>
               </button>
-              <button
-                onClick={() => { setCurrentPage('admin'); setIsMobileMenuOpen(false); }}
-                className={`flex items-center gap-4 px-6 py-4 font-label-caps text-[11px] tracking-widest text-left w-full ${
-                  currentPage === 'admin'
-                    ? 'bg-primary-container/10 text-primary border-r-4 border-primary font-bold'
-                    : 'text-on-surface-variant hover:bg-surface-variant/20 hover:text-primary'
-                }`}
-              >
-                <span className="material-symbols-outlined">explore</span>
-                <span>ADMIN COMMAND</span>
-              </button>
+              {currentUser?.role === 'admin' && (
+                <button
+                  onClick={() => { setCurrentPage('admin'); setIsMobileMenuOpen(false); }}
+                  className={`flex items-center gap-4 px-6 py-4 font-label-caps text-[11px] tracking-widest text-left w-full ${
+                    currentPage === 'admin'
+                      ? 'bg-primary-container/10 text-primary border-r-4 border-primary font-bold'
+                      : 'text-on-surface-variant hover:bg-surface-variant/20 hover:text-primary'
+                  }`}
+                >
+                  <span className="material-symbols-outlined">explore</span>
+                  <span>ADMIN COMMAND</span>
+                </button>
+              )}
               <button
                 onClick={() => { setCurrentPage('home'); setIsMobileMenuOpen(false); }}
                 className="text-on-surface-variant flex items-center gap-4 px-6 py-4 font-label-caps text-[11px] tracking-widest hover:bg-surface-variant/20 hover:text-primary text-left w-full"
@@ -457,7 +665,12 @@ export default function App() {
 
         {/* Consumer top Navigation (hidden for Logistics) */}
         {!showSidebar && (
-          <Navbar currentPage={currentPage} setPage={setCurrentPage} />
+          <Navbar 
+            currentPage={currentPage} 
+            setPage={setCurrentPage} 
+            currentUser={currentUser}
+            switchAccount={switchAccount}
+          />
         )}
 
         {/* Dynamic Page Rendering */}

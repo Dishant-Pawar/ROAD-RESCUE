@@ -152,4 +152,15 @@ export const markNotificationReadApi = async (id) => {
   return res.data;
 };
 
+// Incident Stats
+export const getAdminStatsApi = async () => {
+  const res = await api.get('/api/incidents/stats/admin');
+  return res.data;
+};
+
+export const getClientStatsApi = async () => {
+  const res = await api.get('/api/incidents/stats/client');
+  return res.data;
+};
+
 export default api;

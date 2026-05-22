@@ -8,19 +8,24 @@ import {
   cancelRequest,
   addChatMessage,
   submitEmergencyReport,
-  getEmergencyReports
+  getEmergencyReports,
+  getAdminStats,
+  getClientStats
 } from '../controllers/serviceController.js';
 import { protect, optionalProtect, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
 
-router.get('/incidents', optionalProtect, getRequests); // Optional or protect/authorize admin
-router.get('/incidents/active', optionalProtect, getActiveRequest);
-router.post('/incidents', optionalProtect, createRequest);
-router.put('/incidents/:id/assign', optionalProtect, assignRequest); // Simplify: allow demo assigning without strict block, or strict protect if preferred. We can use optionalProtect or protect. Let's make it easy to trigger in the demo frontend.
-router.put('/incidents/:id/complete', optionalProtect, completeRequest);
-router.put('/incidents/:id/cancel', optionalProtect, cancelRequest);
-router.post('/incidents/:id/chat', optionalProtect, addChatMessage);
+router.get('/incidents', protect, authorize('admin'), getRequests);
+router.get('/incidents/active', protect, getActiveRequest);
+router.post('/incidents', protect, createRequest);
+router.put('/incidents/:id/assign', protect, authorize('admin'), assignRequest);
+router.put('/incidents/:id/complete', protect, authorize('admin'), completeRequest);
+router.put('/incidents/:id/cancel', protect, cancelRequest);
+router.post('/incidents/:id/chat', protect, addChatMessage);
+
+router.get('/incidents/stats/admin', protect, authorize('admin'), getAdminStats);
+router.get('/incidents/stats/client', protect, getClientStats);
 
 router.post('/emergency-reports', optionalProtect, submitEmergencyReport);
 router.get('/emergency-reports', optionalProtect, getEmergencyReports);

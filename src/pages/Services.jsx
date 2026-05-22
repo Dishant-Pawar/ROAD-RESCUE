@@ -123,7 +123,7 @@ export default function Services({ setPage, triggerSOS }) {
     },
     {
       id: 'accident',
-      title: 'Accident Support',
+      title: 'Accident Supportuld',
       icon: 'car_crash',
       desc: 'Priority dispatch for collision scene management and vehicle removal.',
       isPriority: true,

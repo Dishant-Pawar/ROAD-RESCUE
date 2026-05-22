@@ -1,4 +1,6 @@
 import React from 'react';
+import L from 'leaflet';
+import { getAdminStatsApi } from '../utils/api';
 
 export default function AdminPanel({ 
   setPage, 
@@ -8,8 +10,182 @@ export default function AdminPanel({
   cancelIncident 
 }) {
 
-  const activeRescues = adminIncidents.filter((t) => t.assigned).length;
-  const criticalAlerts = adminIncidents.filter((t) => !t.assigned).length;
+  const mapContainerRef = React.useRef(null);
+  const mapRef = React.useRef(null);
+  const markersRef = React.useRef([]);
+
+  const [stats, setStats] = React.useState({
+    activeRescues: 0,
+    criticalAlerts: 0,
+    avgResponse: 12,
+    availableFleet: 24,
+    totalFleet: 42,
+    revenueDays: [120, 240, 180, 310, 220, 480, 350],
+    zones: {
+      'North Sector': 0,
+      'Downtown': 0,
+      'East Side': 0,
+      'West Hills': 0
+    }
+  });
+
+  React.useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await getAdminStatsApi();
+        if (res && res.success && res.data) {
+          setStats(res.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch admin stats:", err);
+      }
+    };
+    fetchStats();
+  }, [adminIncidents]);
+
+  // Bind React's assignIncident callback to window for Leaflet raw HTML popup callbacks
+  React.useEffect(() => {
+    window.assignIncident = (id) => {
+      assignIncident(id);
+    };
+    return () => {
+      delete window.assignIncident;
+    };
+  }, [assignIncident]);
+
+  React.useEffect(() => {
+    if (!mapContainerRef.current) return;
+    
+    // Initialize map if not already initialized
+    if (!mapRef.current) {
+      const initialMap = L.map(mapContainerRef.current, {
+        center: [28.6304, 77.2177],
+        zoom: 12,
+        zoomControl: true,
+        attributionControl: false
+      });
+      
+      const apiKey = import.meta.env.VITE_STADIA_MAPS_API_KEY || '1wB8YffYmnKghuK4Iz62';
+      
+      // Stadia Maps Dark Vector style (Alidade Smooth Dark)
+      L.tileLayer(`https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png?api_key=${apiKey}`, {
+        maxZoom: 20,
+      }).addTo(initialMap);
+      
+      mapRef.current = initialMap;
+    }
+    
+    const map = mapRef.current;
+    
+    // Clear old markers
+    markersRef.current.forEach(marker => marker.remove());
+    markersRef.current = [];
+    
+    // Custom icon for pending / active incidents (glowing orange ping)
+    const incidentIcon = L.divIcon({
+      className: 'custom-leaflet-icon',
+      html: `
+        <div class="relative flex items-center justify-center">
+          <div class="absolute w-8 h-8 rounded-full bg-secondary/35 border border-secondary/50 animate-ping"></div>
+          <div class="w-4 h-4 rounded-full bg-secondary border-2 border-white shadow-[0_0_15px_rgba(255,138,0,0.9)]"></div>
+        </div>
+      `,
+      iconSize: [32, 32],
+      iconAnchor: [16, 16],
+    });
+
+    // Custom icon for assigned mechanics/vehicles (glowing cyan tow truck)
+    const vehicleIcon = L.divIcon({
+      className: 'custom-leaflet-icon',
+      html: `
+        <div class="relative flex items-center justify-center">
+          <div class="absolute w-8 h-8 rounded-full bg-primary/35 border border-primary/50 animate-ping"></div>
+          <div class="w-5 h-5 rounded-full bg-primary flex items-center justify-center border-2 border-white shadow-[0_0_15px_rgba(0,242,255,0.9)]">
+            <span class="material-symbols-outlined text-[12px] text-white font-bold" style="font-size: 11px;">local_shipping</span>
+          </div>
+        </div>
+      `,
+      iconSize: [32, 32],
+      iconAnchor: [16, 16],
+    });
+
+    const bounds = [];
+    
+    adminIncidents.forEach((ticket) => {
+      const lat = ticket.location?.lat || 28.6304;
+      const lng = ticket.location?.lng || 77.2177;
+      bounds.push([lat, lng]);
+      
+      // Determine which icon to use
+      const isAssigned = ticket.status === 'Assigned';
+      const icon = isAssigned ? vehicleIcon : incidentIcon;
+      
+      // Setup detailed popup text with premium styled cards
+      const statusLabel = isAssigned 
+        ? `<span class="bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 rounded text-[10px] font-bold">DISPATCHED</span>`
+        : `<span class="bg-secondary/20 text-secondary border border-secondary/30 px-2 py-0.5 rounded text-[10px] font-bold animate-pulse">PENDING</span>`;
+        
+      const popupHtml = `
+        <div class="flex flex-col gap-2 min-w-[200px] text-white">
+          <div class="flex justify-between items-center border-b border-white/10 pb-1.5">
+            <span class="font-bold text-sm text-white">${ticket.ticketId || ticket.id}</span>
+            ${statusLabel}
+          </div>
+          <div class="text-[11px] text-white/70">
+            <p class="font-bold text-white/95 text-xs mt-0.5">${ticket.type}</p>
+            <p class="mt-1 flex items-center gap-1"><span class="material-symbols-outlined text-[12px]" style="font-size:12px;">location_on</span> ${ticket.loc}</p>
+            ${isAssigned ? `
+              <div class="mt-2 pt-1.5 border-t border-white/5 flex items-center gap-2">
+                <img src="${ticket.driverAvatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDQvr_HDAe8dIuPOCeH_hCSd8oy2NmxlGvMzAXNKZDtXqxmAQgsaGSbBp5nFz1F94bhRK9iZRp1PDfy-7_3e-n4HIisgKFOcvr6pG4Cv4oPIneIbmFH9Sqz2u75z1w8iPk2Z5oty9UnXzkmiSdHTB3bl_fJa8WUNPXSIxYtC-S6m6-wYXVBvz6dJYp08B6AZbwAhF4TX5NrkjgjyvQvPkZQY-4drXs-3zXAg-CXmBGaSn1SE_x-a1PCjSgYqcK0sA0xhEeAkhUcRX4'}" class="w-6 h-6 rounded-full object-cover border border-white/10" />
+                <div>
+                  <p class="font-bold text-white/95">${ticket.driverName}</p>
+                  <p class="text-[10px] text-white/50">${ticket.vehicle} (ETA ${ticket.eta}m)</p>
+                </div>
+              </div>
+            ` : `
+              <div class="mt-2">
+                <button 
+                  onclick="window.assignIncident('${ticket.ticketId || ticket.id}')"
+                  class="w-full bg-secondary hover:bg-secondary-container text-white py-1 rounded text-center font-bold text-[10px] transition-all cursor-pointer border border-secondary-container/20"
+                >
+                  ASSIGN DRIVER
+                </button>
+              </div>
+            `}
+          </div>
+        </div>
+      `;
+      
+      const marker = L.marker([lat, lng], { icon })
+        .bindPopup(popupHtml)
+        .addTo(map);
+        
+      markersRef.current.push(marker);
+    });
+    
+    // Fit map to markers bounds if there are any
+    if (bounds.length > 0) {
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+    }
+  }, [adminIncidents]);
+
+  const activeRescues = stats.activeRescues;
+  const criticalAlerts = stats.criticalAlerts;
+
+  const totalZoneRequests = Object.values(stats.zones || {}).reduce((a, b) => a + b, 0) || 1;
+  const getZonePct = (zoneName, defaultVal) => {
+    const val = stats.zones?.[zoneName];
+    if (val === undefined || Object.values(stats.zones || {}).reduce((a, b) => a + b, 0) === 0) {
+      return defaultVal;
+    }
+    return Math.round((val / totalZoneRequests) * 100);
+  };
+
+  const maxRevenue = Math.max(...(stats.revenueDays || []), 1);
+  const totalRevenueSum = (stats.revenueDays || []).reduce((a, b) => a + b, 0);
+  const totalRevenueFormatted = totalRevenueSum >= 1000 
+    ? `${(totalRevenueSum / 1000).toFixed(1)}k` 
+    : `${totalRevenueSum}`;
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto w-full flex flex-col gap-6">
@@ -19,7 +195,7 @@ export default function AdminPanel({
         <div>
           <h1 className="text-4xl font-headline-lg gradient-text font-bold">Logistics Command</h1>
           <p className="font-body-lg text-body-lg text-on-surface-variant/80 mt-1">
-            System status: <span className="text-primary-container font-semibold">Nominal</span> • Active Units: 42
+            System status: <span className="text-primary-container font-semibold">Nominal</span> • Active Fleet: {stats.totalFleet || 42}
           </p>
         </div>
         <div className="flex gap-3">
@@ -82,7 +258,7 @@ export default function AdminPanel({
             </div>
             <div className="flex items-end gap-3">
               <span className="text-4xl md:text-5xl font-display-lg text-on-surface font-bold">
-                12<span className="text-lg font-title-md text-on-surface-variant ml-1">min</span>
+                {stats.avgResponse}<span className="text-lg font-title-md text-on-surface-variant ml-1">min</span>
               </span>
               <span className="font-body-sm text-body-sm text-primary mb-2 flex items-center">
                 <span className="material-symbols-outlined text-[14px]">arrow_downward</span> 2m
@@ -97,8 +273,8 @@ export default function AdminPanel({
               <span className="material-symbols-outlined text-outline p-2 rounded">local_shipping</span>
             </div>
             <div className="flex items-end gap-3">
-              <span className="text-4xl md:text-5xl font-display-lg text-on-surface font-bold">24</span>
-              <span className="font-body-sm text-body-sm text-on-surface-variant/60 mb-2">/ 42 units</span>
+              <span className="text-4xl md:text-5xl font-display-lg text-on-surface font-bold">{stats.availableFleet}</span>
+              <span className="font-body-sm text-body-sm text-on-surface-variant/60 mb-2">/ {stats.totalFleet} units</span>
             </div>
           </div>
         </div>
@@ -120,37 +296,9 @@ export default function AdminPanel({
             </div>
           </div>
           
-          <div className="flex-1 relative w-full h-full bg-surface-container-lowest">
-            {/* Map Image */}
-            <img 
-              alt="Metropolitan Tactical Radar Map" 
-              className="w-full h-full object-cover opacity-50 mix-blend-luminosity brightness-50" 
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuCONQtevrHijxHUD0MGtLkVURRb7LpFgcUmAbYD5iPl6RH3g13HI1CsoLU7msfevpUAxZb8NOugO9d_qUsJUBhDiFuUVk2iXJTn_Bwlrn78ksZNuN4b6S3bA4Y1I4F-tZdKpk6kWcAf2FREaOlL_R3YbvKRXIkRG5ZDFYHg1QMQBpVI0uzW35xC2H7wsKpr1g9gF3CnukZCJATxniaZrIeuKKAtoSdS9Ytq87HiOoi2Su1Hs-1h8HIWoB57Zo5Ab7sDQuBUDcMqMmg"
-              onError={(e) => { e.target.style.display = 'none'; }}
-            />
-            
-            {/* Map Overlays / Pointers */}
-            <div className="absolute inset-0 p-8 pointer-events-none">
-              {/* Unit 1 */}
-              <div className="absolute top-1/4 left-1/3 flex flex-col items-center pointer-events-auto cursor-pointer group">
-                <div className="bg-primary-container/20 border border-primary-container/40 text-primary-container px-2 py-0.5 rounded text-[9px] font-label-caps backdrop-blur-md mb-1 opacity-0 group-hover:opacity-100 transition-opacity">Unit-Alpha</div>
-                <div className="w-4 h-4 rounded-full bg-primary-container pulse-dot shadow-[0_0_10px_rgba(0,242,255,0.8)] border-2 border-surface"></div>
-              </div>
-              
-              {/* Unit 2 (Emergency) */}
-              <div className="absolute top-1/2 left-2/3 flex flex-col items-center pointer-events-auto cursor-pointer group">
-                <div className="bg-secondary-container/20 border border-secondary-container/40 text-secondary px-2 py-0.5 rounded text-[9px] font-label-caps backdrop-blur-md mb-1 opacity-0 group-hover:opacity-100 transition-opacity">Incident #402</div>
-                <div className="w-4 h-4 rounded-full bg-secondary pulse-dot-emergency shadow-[0_0_15px_rgba(255,138,0,0.8)] border-2 border-surface"></div>
-              </div>
-              
-              {/* Unit 3 */}
-              <div className="absolute bottom-1/3 left-1/2 flex flex-col items-center pointer-events-auto cursor-pointer group">
-                <div className="w-3.5 h-3.5 rounded-full bg-outline border-2 border-surface shadow-md"></div>
-              </div>
-            </div>
-            
-            {/* Radar Sweep Effect Overlay */}
-            <div className="absolute inset-0 pointer-events-none opacity-20" style={{ background: 'conic-gradient(from 0deg at 50% 50%, transparent 0deg, rgba(0, 242, 255, 0.1) 60deg, transparent 60deg)', animation: 'spin-kf 10s linear infinite' }}></div>
+          <div className="flex-1 relative w-full h-full bg-[#121212] overflow-hidden min-h-[400px]">
+            {/* Real Interactive Leaflet Dark Map */}
+            <div className="w-full h-full absolute inset-0 z-10" ref={mapContainerRef} style={{ outline: 'none' }}></div>
           </div>
         </div>
 
@@ -206,7 +354,7 @@ export default function AdminPanel({
                             onClick={() => cancelIncident(ticket.id)}
                             className="bg-error/10 text-error border border-error/20 px-2 py-0.5 rounded font-label-caps text-[9px] hover:bg-error hover:text-on-error transition-all font-bold"
                           >
-                            Abrupt
+                            Abort
                           </button>
                           <button 
                             onClick={() => completeIncident(ticket.id)}
@@ -261,7 +409,7 @@ export default function AdminPanel({
               <h3 className="font-title-md text-title-md text-on-surface font-bold">Revenue Trend</h3>
               <p className="font-body-sm text-body-sm text-on-surface-variant/60">Last 7 Days</p>
             </div>
-            <span className="text-2xl font-display-lg text-primary-container font-bold">$24.5k</span>
+            <span className="text-2xl font-display-lg text-primary-container font-bold">${totalRevenueFormatted}</span>
           </div>
 
           <div className="flex-grow relative w-full flex items-end justify-between pt-10 pb-4">
@@ -271,20 +419,28 @@ export default function AdminPanel({
               <div className="w-full border-t border-outline-variant/10 h-0"></div>
               <div className="w-full border-t border-outline-variant/10 h-0"></div>
             </div>
-            {/* Bars/Area (Simplified CSS visualization) */}
-            <div className="w-[10%] h-[40%] bg-primary-container/20 rounded-t border-t-2 border-primary-container relative group cursor-pointer">
-              <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-surface p-1.5 rounded border border-outline-variant text-[9px] font-label-caps opacity-0 group-hover:opacity-100 transition-opacity z-10 font-bold">$3.1k</div>
-            </div>
-            <div className="w-[10%] h-[55%] bg-primary-container/20 rounded-t border-t-2 border-primary-container relative group cursor-pointer">
-              <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-surface p-1.5 rounded border border-outline-variant text-[9px] font-label-caps opacity-0 group-hover:opacity-100 transition-opacity z-10 font-bold">$4.2k</div>
-            </div>
-            <div className="w-[10%] h-[35%] bg-primary-container/20 rounded-t border-t-2 border-primary-container relative group cursor-pointer"></div>
-            <div className="w-[10%] h-[70%] bg-primary-container/20 rounded-t border-t-2 border-primary-container relative group cursor-pointer"></div>
-            <div className="w-[10%] h-[60%] bg-primary-container/20 rounded-t border-t-2 border-primary-container relative group cursor-pointer"></div>
-            <div className="w-[10%] h-[85%] bg-primary-container/40 rounded-t border-t-2 border-primary relative group shadow-[0_0_15px_rgba(0,242,255,0.2)] cursor-pointer">
-              <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-surface p-1.5 rounded border border-primary text-[9px] font-label-caps opacity-100 transition-opacity z-10 text-primary font-bold">$6.8k</div>
-            </div>
-            <div className="w-[10%] h-[45%] bg-primary-container/20 rounded-t border-t-2 border-primary-container relative group cursor-pointer"></div>
+            {/* Dynamic Bars */}
+            {(stats.revenueDays || []).map((amount, idx) => {
+              const heightPct = Math.max(10, Math.round((amount / maxRevenue) * 85));
+              const isToday = idx === 6;
+              return (
+                <div 
+                  key={idx}
+                  style={{ height: `${heightPct}%` }}
+                  className={`w-[10%] rounded-t border-t-2 relative group cursor-pointer transition-all duration-500 ${
+                    isToday 
+                      ? 'bg-primary-container/40 border-primary shadow-[0_0_15px_rgba(0,242,255,0.2)] hover:bg-primary-container/50' 
+                      : 'bg-primary-container/20 border-primary-container hover:bg-primary-container/30'
+                  }`}
+                >
+                  <div className={`absolute -top-8 left-1/2 -translate-x-1/2 bg-surface p-1.5 rounded border text-[9px] font-label-caps opacity-0 group-hover:opacity-100 transition-opacity z-10 font-bold ${
+                    isToday ? 'border-primary text-primary' : 'border-outline-variant text-on-surface'
+                  }`}>
+                    ${amount.toFixed(0)}
+                  </div>
+                </div>
+              );
+            })}
           </div>
           
           <div className="flex justify-between text-[10px] font-label-caps text-on-surface-variant/60 px-2 font-semibold mt-2">
@@ -307,38 +463,50 @@ export default function AdminPanel({
             </button>
           </div>
           
-          <div className="flex-1 flex flex-col gap-4 justify-center">
+          <div className="flex-grow flex flex-col gap-4 justify-center">
             {/* Zone Rows */}
             <div className="flex items-center gap-4 bg-surface-container-low/30 p-2.5 rounded-lg">
               <span className="w-20 font-label-caps text-[10px] text-on-surface-variant/80 text-right uppercase font-semibold">North Sector</span>
               <div className="flex-1 h-3 bg-surface-container rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-primary-container/50 to-primary-container w-[75%] rounded-full shadow-[0_0_10px_rgba(0,242,255,0.3)]"></div>
+                <div 
+                  style={{ width: `${getZonePct('North Sector', 75)}%` }} 
+                  className="h-full bg-gradient-to-r from-primary-container/50 to-primary-container rounded-full shadow-[0_0_10px_rgba(0,242,255,0.3)] transition-all duration-500"
+                ></div>
               </div>
-              <span className="w-8 font-label-caps text-label-caps text-on-surface font-bold text-xs">75%</span>
+              <span className="w-8 font-label-caps text-label-caps text-on-surface font-bold text-xs">{getZonePct('North Sector', 75)}%</span>
             </div>
             
             <div className="flex items-center gap-4 bg-surface-container-low/30 p-2.5 rounded-lg">
               <span className="w-20 font-label-caps text-[10px] text-on-surface-variant/80 text-right uppercase font-semibold">Downtown</span>
               <div className="flex-1 h-3 bg-surface-container rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-secondary/50 to-secondary w-[90%] rounded-full shadow-[0_0_10px_rgba(255,138,0,0.3)]"></div>
+                <div 
+                  style={{ width: `${getZonePct('Downtown', 90)}%` }} 
+                  className="h-full bg-gradient-to-r from-secondary/50 to-secondary rounded-full shadow-[0_0_10px_rgba(255,138,0,0.3)] transition-all duration-500"
+                ></div>
               </div>
-              <span className="w-8 font-label-caps text-label-caps text-secondary font-bold text-xs">90%</span>
+              <span className="w-8 font-label-caps text-label-caps text-secondary font-bold text-xs">{getZonePct('Downtown', 90)}%</span>
             </div>
             
             <div className="flex items-center gap-4 bg-surface-container-low/30 p-2.5 rounded-lg">
               <span className="w-20 font-label-caps text-[10px] text-on-surface-variant/80 text-right uppercase font-semibold">East Side</span>
               <div className="flex-1 h-3 bg-surface-container rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-primary-container/30 to-primary-container/60 w-[40%] rounded-full"></div>
+                <div 
+                  style={{ width: `${getZonePct('East Side', 40)}%` }} 
+                  className="h-full bg-gradient-to-r from-primary-container/30 to-primary-container/60 rounded-full transition-all duration-500"
+                ></div>
               </div>
-              <span className="w-8 font-label-caps text-label-caps text-on-surface font-bold text-xs">40%</span>
+              <span className="w-8 font-label-caps text-label-caps text-on-surface font-bold text-xs">{getZonePct('East Side', 40)}%</span>
             </div>
             
             <div className="flex items-center gap-4 bg-surface-container-low/30 p-2.5 rounded-lg">
               <span className="w-20 font-label-caps text-[10px] text-on-surface-variant/80 text-right uppercase font-semibold">West Hills</span>
               <div className="flex-1 h-3 bg-surface-container rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-primary-container/20 to-primary-container/40 w-[25%] rounded-full"></div>
+                <div 
+                  style={{ width: `${getZonePct('West Hills', 25)}%` }} 
+                  className="h-full bg-gradient-to-r from-primary-container/20 to-primary-container/40 rounded-full transition-all duration-500"
+                ></div>
               </div>
-              <span className="w-8 font-label-caps text-label-caps text-on-surface font-bold text-xs">25%</span>
+              <span className="w-8 font-label-caps text-label-caps text-on-surface font-bold text-xs">{getZonePct('West Hills', 25)}%</span>
             </div>
           </div>
         </div>

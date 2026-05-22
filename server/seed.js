@@ -85,9 +85,9 @@ const seedData = async () => {
         plate: 'RD-RESC-9'
       },
       location: {
-        lat: 47.6062,
-        lng: -122.3321,
-        address: 'Downtown Hub, Sector 4'
+        lat: 28.6304,
+        lng: 77.2177,
+        address: 'Connaught Place Hub, Delhi'
       },
       rating: 4.9,
       reviewsCount: 24
@@ -106,9 +106,9 @@ const seedData = async () => {
         plate: 'RD-FLAT-4'
       },
       location: {
-        lat: 47.6101,
-        lng: -122.3421,
-        address: 'Westside Sector 2'
+        lat: 28.6415,
+        lng: 77.1248,
+        address: 'Rajouri Garden Sector, Delhi'
       },
       rating: 4.8,
       reviewsCount: 19
@@ -122,13 +122,14 @@ const seedData = async () => {
     const reqActive = await ServiceRequest.create({
       ticketId: 'RR-102',
       user: user._id,
-      type: 'Flatbed Towing',
+      type: 'Towing Service',
       issue: 'tow',
       time: '12m ago',
-      loc: 'Downtown, 4th & Main',
-      location: { lat: 47.6062, lng: -122.3321 },
+      loc: 'Connaught Place, Central Delhi',
+      location: { lat: 28.6304, lng: 77.2177 },
       req: 'Unit-Delta (ETA 5m)',
       status: 'Assigned',
+      customerVehicle: '2024 Tesla Model S Plaid',
       assigned: true,
       eta: 5,
       mechanic: mechanic2._id,
@@ -157,10 +158,11 @@ const seedData = async () => {
       type: 'Lockout Support',
       issue: 'lockout',
       time: '15m ago',
-      loc: 'Westside Mall Parking',
-      location: { lat: 47.6152, lng: -122.3221 },
+      loc: 'Karol Bagh Shopping District',
+      location: { lat: 28.6448, lng: 77.1887 },
       req: 'Standard Assistance',
       status: 'Pending',
+      customerVehicle: '2024 Tesla Model S Plaid',
       assigned: false,
       driverName: '',
       driverPhone: '',
@@ -179,12 +181,13 @@ const seedData = async () => {
     const reqComp1 = await ServiceRequest.create({
       ticketId: 'RR-092',
       user: user._id,
-      type: 'Flatbed Towing',
+      type: 'Towing Service',
       issue: 'tow',
       time: 'Oct 24, 2026',
       loc: 'I-5 Southbound Express',
       req: 'Heavy Flatbed',
       status: 'Completed',
+      customerVehicle: '2024 Tesla Model S Plaid',
       assigned: true,
       driverName: 'David R.',
       driverPhone: '+1 (555) 019-2834',
@@ -200,6 +203,7 @@ const seedData = async () => {
       loc: 'Lake Union Overlook',
       req: 'Mobile Battery Unit',
       status: 'Completed',
+      customerVehicle: '2024 Tesla Model S Plaid',
       assigned: true,
       driverName: 'Marcus T.',
       driverPhone: '+1 (555) 018-9982',
@@ -215,6 +219,7 @@ const seedData = async () => {
       loc: 'Cascade Foot Rail',
       req: 'Winch Rig',
       status: 'Cancelled',
+      customerVehicle: '2024 Tesla Model S Plaid',
       assigned: false,
     });
 

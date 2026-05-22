@@ -1,8 +1,118 @@
 import React, { useState, useEffect } from 'react';
+import L from 'leaflet';
 
 export default function LiveTracking({ setPage, activeIncident, addChatMessage }) {
   const [inputValue, setInputValue] = useState('');
   const [etaSeconds, setEtaSeconds] = useState(720); // 12 minutes default
+
+  const mapContainerRef = React.useRef(null);
+  const mapRef = React.useRef(null);
+  const driverMarkerRef = React.useRef(null);
+
+  const incidentLat = activeIncident?.location?.lat || 28.6304;
+  const incidentLng = activeIncident?.location?.lng || 77.2177;
+
+  // Establish a fixed starting point for the driver relative to the breakdown
+  const startLat = incidentLat + 0.012;
+  const startLng = incidentLng - 0.018;
+
+  // Initialize interactive Leaflet Map
+  React.useEffect(() => {
+    if (!mapContainerRef.current || !activeIncident) return;
+    
+    // Cleanup existing map if any
+    if (mapRef.current) {
+      mapRef.current.remove();
+      mapRef.current = null;
+    }
+
+    const map = L.map(mapContainerRef.current, {
+      center: [(incidentLat + startLat) / 2, (incidentLng + startLng) / 2],
+      zoom: 13,
+      zoomControl: true,
+      attributionControl: false
+    });
+
+    const apiKey = import.meta.env.VITE_STADIA_MAPS_API_KEY || '1wB8YffYmnKghuK4Iz62';
+    
+    // Stadia Maps dark theme
+    L.tileLayer(`https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png?api_key=${apiKey}`, {
+      maxZoom: 20
+    }).addTo(map);
+
+    mapRef.current = map;
+
+    // Glowing orange/red pulsing breakdown beacon icon
+    const breakdownIcon = L.divIcon({
+      className: 'custom-leaflet-icon',
+      html: `
+        <div class="relative flex items-center justify-center">
+          <div class="absolute w-8 h-8 rounded-full bg-secondary/35 border border-secondary/50 animate-ping"></div>
+          <div class="w-4 h-4 rounded-full bg-secondary border-2 border-white shadow-[0_0_15px_rgba(255,138,0,0.9)]"></div>
+        </div>
+      `,
+      iconSize: [32, 32],
+      iconAnchor: [16, 16]
+    });
+
+    // Glowing cyan utility tow truck icon
+    const vehicleIcon = L.divIcon({
+      className: 'custom-leaflet-icon',
+      html: `
+        <div class="relative flex items-center justify-center">
+          <div class="absolute w-8 h-8 rounded-full bg-primary/35 border border-primary/50 animate-ping"></div>
+          <div class="w-5 h-5 rounded-full bg-primary flex items-center justify-center border-2 border-white shadow-[0_0_15px_rgba(0,242,255,0.9)]">
+            <span class="material-symbols-outlined text-[12px] text-white font-bold" style="font-size: 11px;">local_shipping</span>
+          </div>
+        </div>
+      `,
+      iconSize: [32, 32],
+      iconAnchor: [16, 16]
+    });
+
+    // Breakdown marker
+    L.marker([incidentLat, incidentLng], { icon: breakdownIcon })
+      .bindPopup(`<div class="text-white font-semibold text-xs py-1">Your breakdown location beacon is broadcasting.</div>`)
+      .addTo(map);
+
+    // Glowing cyan dashed en-route polyline path
+    L.polyline([[startLat, startLng], [incidentLat, incidentLng]], {
+      color: '#00f2ff',
+      weight: 4,
+      opacity: 0.7,
+      dashArray: '10, 10',
+      lineCap: 'round'
+    }).addTo(map);
+
+    // Driver Marker
+    const driverMarker = L.marker([startLat, startLng], { icon: vehicleIcon })
+      .bindPopup(`<div class="text-white font-semibold text-xs py-1">Unit #402 (${activeIncident.driverName || 'David R.'}) is en route.</div>`)
+      .addTo(map);
+
+    driverMarkerRef.current = driverMarker;
+
+    map.fitBounds([[startLat, startLng], [incidentLat, incidentLng]], { padding: [80, 80] });
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, [activeIncident?.id]);
+
+  // Interpolate and smoothly move the Driver Tow Truck Marker on countdown ticks
+  React.useEffect(() => {
+    if (!driverMarkerRef.current || !activeIncident) return;
+    
+    const totalDuration = (activeIncident.eta || 12) * 60;
+    const ratio = Math.max(0, Math.min(1, 1 - (etaSeconds / totalDuration)));
+    
+    const currentLat = startLat + (incidentLat - startLat) * ratio;
+    const currentLng = startLng + (incidentLng - startLng) * ratio;
+    
+    driverMarkerRef.current.setLatLng([currentLat, currentLng]);
+  }, [etaSeconds, activeIncident]);
 
   // Sync and countdown ETA
   useEffect(() => {
@@ -117,43 +227,10 @@ export default function LiveTracking({ setPage, activeIncident, addChatMessage }
     <div className="relative min-h-[calc(100vh-80px)] flex flex-col overflow-hidden">
       
       {/* Map Area */}
-      <div 
-        className="absolute inset-0 z-0 map-bg bg-[#121212]"
-        style={{
-          backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuAtteiTI38b1NJDycNRcoMm37mgHStRt9jcFrGmvQybqzQs5a1Ur7j0E13oAdWbLhrrd-fmFg87cQSOqaxkbVmU6CnaIvYUIeAjEzWXp4w1Arizyci4LuinGdjCpDu80NtA7Kqae-KpB5sZhxdDMDBvhBpk1nk1avpYbgSSiiSPsDpAFCvIVwWOD6PW58usfJxvhMQruc8a08s3bFu-QrEpIY5qzqjSZVTfUOlVvOfbdG_sODiIMWkfgPsqahMA6FgzGPJ66qwTsC4')",
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      >
-        {/* Overlay to darken map for UI contrast */}
-        <div className="absolute inset-0 bg-background/60"></div>
-        
-        {/* Route Path (SVG Simulation with dash array animations) */}
-        <svg className="absolute inset-0 w-full h-full" style={{ pointerEvents: 'none' }}>
-          <path 
-            d="M 200 400 Q 300 300 400 350 T 600 200" 
-            fill="none" 
-            stroke="#00f2ff" 
-            strokeLinecap="round" 
-            strokeWidth="4" 
-            style={{
-              filter: 'drop-shadow(0 0 8px rgba(0,242,255,0.8))',
-              strokeDasharray: '10 10',
-              animation: 'dash-kf 20s linear infinite'
-            }}
-          />
-          {/* Origin Marker */}
-          <circle cx="200" cy="400" fill="#ff8a00" r="8" className="pulse-animation"></circle>
-          {/* Destination Marker */}
-          <circle cx="600" cy="200" fill="#00f2ff" r="8"></circle>
-        </svg>
-
-        {/* Floating Mechanic Marker */}
-        <div className="absolute top-[320px] left-[350px] transform -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center">
-          <div className="bg-surface border border-primary-container p-2 rounded-full shadow-[0_0_15px_#00f2ff] animate-bounce">
-            <span className="material-symbols-outlined text-primary-container text-lg">local_shipping</span>
-          </div>
-        </div>
+      {/* Real Interactive Leaflet Dark Map */}
+      <div className="absolute inset-0 z-0 bg-[#121212] overflow-hidden w-full h-full" ref={mapContainerRef} style={{ outline: 'none' }}>
+        {/* Overlay to darken map slightly for premium contrast */}
+        <div className="absolute inset-0 bg-background/30 pointer-events-none z-20"></div>
       </div>
 
       {/* Main Grid Wrapper */}

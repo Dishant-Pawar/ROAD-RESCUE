@@ -196,40 +196,44 @@ export default function EmergencySOS({ setPage, activeIncident, triggerSOS, canc
               <h3 className="font-label-caps text-label-caps text-on-surface-variant/80 mb-3 text-[11px] tracking-widest">
                 SELECT PRIMARY ISSUE
               </h3>
-              <div className="grid grid-cols-3 gap-3">
-                <button 
-                  onClick={() => setSelectedIssue('accident')}
-                  className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-colors group ${
-                    selectedIssue === 'accident'
-                      ? 'glass-panel-active border-error/50 bg-error/5'
-                      : 'border-outline-variant/30 hover:border-primary/50 hover:bg-primary/5'
-                  }`}
-                >
-                  <span className={`material-symbols-outlined text-[28px] ${selectedIssue === 'accident' ? 'text-error animate-pulse' : 'text-on-surface-variant/80'}`}>minor_crash</span>
-                  <span className="font-label-caps text-[9px] mt-2 text-on-surface-variant uppercase font-medium">Accident</span>
-                </button>
-                <button 
-                  onClick={() => setSelectedIssue('battery')}
-                  className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-colors group ${
-                    selectedIssue === 'battery'
-                      ? 'glass-panel-active border-primary/50 bg-primary/5'
-                      : 'border-outline-variant/30 hover:border-primary/50 hover:bg-primary/5'
-                  }`}
-                >
-                  <span className={`material-symbols-outlined text-[28px] ${selectedIssue === 'battery' ? 'text-primary' : 'text-on-surface-variant/80'}`} style={{ fontVariationSettings: "'FILL' 1" }}>ev_station</span>
-                  <span className="font-label-caps text-[9px] mt-2 text-on-surface-variant uppercase font-medium">Battery</span>
-                </button>
-                <button 
-                  onClick={() => setSelectedIssue('tire')}
-                  className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-colors group ${
-                    selectedIssue === 'tire'
-                      ? 'glass-panel-active border-primary/50 bg-primary/5'
-                      : 'border-outline-variant/30 hover:border-primary/50 hover:bg-primary/5'
-                  }`}
-                >
-                  <span className={`material-symbols-outlined text-[28px] ${selectedIssue === 'tire' ? 'text-primary' : 'text-on-surface-variant/80'}`}>tire_repair</span>
-                  <span className="font-label-caps text-[9px] mt-2 text-on-surface-variant uppercase font-medium">Flat Tire</span>
-                </button>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { id: 'accident', title: 'Accident Support', icon: 'car_crash', isPriority: true },
+                  { id: 'battery', title: 'Battery Jumpstart', icon: 'battery_charging_full' },
+                  { id: 'tire', title: 'Flat Tire Repair', icon: 'tire_repair' },
+                  { id: 'fuel', title: 'Fuel Delivery', icon: 'local_gas_station' },
+                  { id: 'tow', title: 'Towing Service', icon: 'auto_towing' },
+                  { id: 'flood', title: 'Flood Rescue', icon: 'water_damage' },
+                  { id: 'mud', title: 'Mud Rescue', icon: 'terrain' },
+                  { id: 'engine', title: 'Engine Diagnostic', icon: 'build' },
+                ].map((item) => {
+                  const isSelected = selectedIssue === item.id;
+                  const btnColorClass = item.isPriority 
+                    ? (isSelected ? 'glass-panel-active border-error/50 bg-error/5 shadow-[0_0_15px_rgba(255,81,47,0.15)]' : 'border-outline-variant/30 hover:border-error/50 hover:bg-error/5')
+                    : (isSelected ? 'glass-panel-active border-primary/50 bg-primary/5 shadow-[0_0_15px_rgba(0,242,255,0.15)]' : 'border-outline-variant/30 hover:border-primary/50 hover:bg-primary/5');
+                  const iconColorClass = item.isPriority
+                    ? (isSelected ? 'text-error animate-pulse' : 'text-on-surface-variant/80 group-hover:text-error')
+                    : (isSelected ? 'text-primary' : 'text-on-surface-variant/80 group-hover:text-primary');
+
+                  return (
+                    <button 
+                      key={item.id}
+                      type="button"
+                      onClick={() => setSelectedIssue(item.id)}
+                      className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-all duration-300 group ${btnColorClass}`}
+                    >
+                      <span 
+                        className={`material-symbols-outlined text-[28px] transition-transform group-hover:scale-110 duration-300 ${iconColorClass}`}
+                        style={{ fontVariationSettings: "'FILL' 1" }}
+                      >
+                        {item.icon}
+                      </span>
+                      <span className="font-label-caps text-[9px] mt-2 text-on-surface-variant uppercase font-semibold text-center leading-tight">
+                        {item.title}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

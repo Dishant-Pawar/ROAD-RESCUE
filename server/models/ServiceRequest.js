@@ -29,8 +29,8 @@ const serviceRequestSchema = new mongoose.Schema({
     default: 'Sector 4 - Downtown Grid',
   },
   location: {
-    lat: { type: Number, default: 47.6062 },
-    lng: { type: Number, default: -122.3321 }
+    lat: { type: Number, default: 28.6304 },
+    lng: { type: Number, default: 77.2177 }
   },
   req: {
     type: String,
@@ -40,6 +40,10 @@ const serviceRequestSchema = new mongoose.Schema({
     type: String,
     enum: ['Pending', 'Assigned', 'Completed', 'Cancelled'],
     default: 'Pending',
+  },
+  customerVehicle: {
+    type: String,
+    default: '',
   },
   assigned: {
     type: Boolean,

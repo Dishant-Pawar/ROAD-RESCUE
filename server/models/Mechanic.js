@@ -48,8 +48,8 @@ const mechanicSchema = new mongoose.Schema({
     plate: { type: String, default: 'RD-RESC-9' }
   },
   location: {
-    lat: { type: Number, default: 47.6062 },
-    lng: { type: Number, default: -122.3321 },
+    lat: { type: Number, default: 28.6304 },
+    lng: { type: Number, default: 77.2177 },
     address: { type: String, default: 'Downtown, Sector 4' }
   },
   rating: {

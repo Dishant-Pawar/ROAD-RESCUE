@@ -1,15 +1,15 @@
 import React from 'react';
 
-export default function Sidebar({ currentPage, setPage }) {
+export default function Sidebar({ currentPage, setPage, currentUser, switchAccount }) {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', fill: true },
-    { id: 'admin', label: 'Admin Command', icon: 'explore', fill: false },
+    ...(currentUser && currentUser.role === 'admin' ? [{ id: 'admin', label: 'Admin Command', icon: 'explore', fill: false }] : []),
     { id: 'home', label: 'Consumer Web', icon: 'home', fill: false },
     { id: 'services', label: 'All Services', icon: 'build', fill: false },
   ];
 
   return (
-    <nav className="hidden md:flex flex-col h-screen w-72 left-0 top-0 fixed bg-surface-container-low/40 backdrop-blur-3xl border-r border-outline-variant/10 shadow-2xl py-stack-lg z-40">
+    <nav className="hidden md:flex flex-col h-screen w-72 left-0 top-0 fixed bg-surface-container-low/40 backdrop-blur-3xl border-r border-outline-variant/10 shadow-2xl py-8 z-40">
       {/* Brand Header */}
       <div className="px-6 mb-8 flex items-center gap-3">
         <div className="w-10 h-10 rounded-full overflow-hidden border border-outline-variant/30 flex items-center justify-center bg-surface-container">
@@ -19,9 +19,9 @@ export default function Sidebar({ currentPage, setPage }) {
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuAsh4C5iHWzKRxWfShZVM8eiZPzMc3kWhiM5zSVvj0-DX00SRwdrB7Z5JaWl1boPu-27zdJYJqPhMKCamr0tHZtxdAothXlGLbuCQaQhXAwfvi0BHd-JqukyDfSm_uO2tfYrddJJKONqbw8ss5DKjBQz0XCA6wB3xFhvBD8AEYpATSUB_3LlXs1jGgMpcCWUwq9wgwp2zHMLsw1XPjHf_l8sUGP5kenHyHymqAADctVFcT1HLdutUTLiwrvxumCiMPoGifpYxVB6pU"
           />
         </div>
-        <div>
-          <h2 className="font-title-md text-title-md text-on-surface">Command Center</h2>
-          <p className="font-label-caps text-label-caps text-on-surface-variant text-[10px]">Precision Logistics</p>
+        <div className="text-left">
+          <h2 className="font-title-md text-title-md text-on-surface font-bold leading-tight">Command Center</h2>
+          <p className="font-label-caps text-label-caps text-on-surface-variant text-[10px] uppercase tracking-wider font-semibold">Precision Logistics</p>
         </div>
       </div>
 
@@ -76,18 +76,40 @@ export default function Sidebar({ currentPage, setPage }) {
           <span className="material-symbols-outlined text-[18px]">add</span>
           New Dispatch
         </button>
-        <div className="flex items-center gap-3 pt-4 border-t border-outline-variant/20">
-          <div className="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center overflow-hidden border border-outline-variant">
-            <img 
-              alt="Dispatcher Headshot" 
-              className="w-full h-full object-cover" 
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuCez33bgHUSrQl6WdI1kMQK3oPr-AObkdpUW4MCgBGyA-JECs3hVzrHU87CsbLgLbN2yIuNgAfAAuEKd2yXuzF-l-LgGHgzSHeFB6HddygQXgt2-u3fOFSYkva4SQvagEwhHXF-tJAPMJ2N24gwsEjhmzNH_xcHxt0YQf6IL9vR5Rw-CUHFxqm9jO3f4qcxAkwKSRVn2FpZe2wnO8IP_8COP4vvvH8TvSwlVrMMe84vhG0S3swJnY-0LuvZnu-poiwvTYuSd-YF7nE"
-            />
+        
+        <div className="flex justify-between items-center pt-4 border-t border-outline-variant/20">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center overflow-hidden border border-outline-variant">
+              {currentUser?.avatar ? (
+                <img 
+                  alt="Dispatcher Headshot" 
+                  className="w-full h-full object-cover animate-in fade-in duration-200" 
+                  src={currentUser.avatar}
+                />
+              ) : (
+                <span className="material-symbols-outlined text-on-surface-variant">person</span>
+              )}
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="font-body-sm text-body-sm text-on-surface font-semibold truncate max-w-[110px] block leading-none mb-1">
+                {currentUser?.name || 'Guest User'}
+              </span>
+              <span className="font-label-caps text-on-surface-variant text-[9px] uppercase tracking-wider font-bold block leading-none">
+                {currentUser?.role === 'admin' ? 'Chief Operator' : 'Client Profile'}
+              </span>
+            </div>
           </div>
-          <div className="flex flex-col">
-            <span className="font-body-sm text-body-sm text-on-surface">Alex Mercer</span>
-            <span className="font-label-caps text-label-caps text-on-surface-variant text-[10px]">Chief Dispatcher</span>
-          </div>
+          
+          {/* Quick Account Switcher inside Sidebar */}
+          <button
+            onClick={() => switchAccount(currentUser?.role === 'admin' ? 'user' : 'admin')}
+            title={`Switch to ${currentUser?.role === 'admin' ? 'Consumer' : 'Admin'} clearance`}
+            className="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-variant flex items-center justify-center border border-outline-variant/30 hover:border-primary/50 text-on-surface-variant hover:text-primary transition-all duration-300 shadow-md group focus:outline-none"
+          >
+            <span className="material-symbols-outlined text-[16px] group-hover:rotate-180 transition-transform duration-500">
+              cached
+            </span>
+          </button>
         </div>
       </div>
     </nav>
