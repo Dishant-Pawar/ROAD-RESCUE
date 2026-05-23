@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import L from 'leaflet';
 
-export default function LiveTracking({ setPage, activeIncident, addChatMessage }) {
+export default function LiveTracking({ setPage, activeIncident, addChatMessage, switchAccount }) {
   const [inputValue, setInputValue] = useState('');
   const [etaSeconds, setEtaSeconds] = useState(720); // 12 minutes default
 
@@ -12,9 +12,9 @@ export default function LiveTracking({ setPage, activeIncident, addChatMessage }
   const incidentLat = activeIncident?.location?.lat || 28.6304;
   const incidentLng = activeIncident?.location?.lng || 77.2177;
 
-  // Establish a fixed starting point for the driver relative to the breakdown
-  const startLat = incidentLat + 0.012;
-  const startLng = incidentLng - 0.018;
+  // Load physical driver starting coordinates from DB, fallback to central dispatch node if not set
+  const startLat = activeIncident?.driverLocation?.lat || 28.6304;
+  const startLng = activeIncident?.driverLocation?.lng || 77.2177;
 
   // Initialize interactive Leaflet Map
   React.useEffect(() => {
@@ -117,6 +117,7 @@ export default function LiveTracking({ setPage, activeIncident, addChatMessage }
   // Sync and countdown ETA
   useEffect(() => {
     if (activeIncident && activeIncident.eta) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEtaSeconds(activeIncident.eta * 60);
     }
   }, [activeIncident]);
@@ -197,7 +198,13 @@ export default function LiveTracking({ setPage, activeIncident, addChatMessage }
           </div>
 
           <div 
-            onClick={() => setPage('admin')}
+            onClick={async () => {
+              if (switchAccount) {
+                await switchAccount('admin');
+              } else {
+                setPage('admin');
+              }
+            }}
             className="bg-secondary/5 hover:bg-secondary/10 border border-secondary/20 rounded-xl p-4 cursor-pointer text-left transition-all group max-w-md mx-auto w-full"
           >
             <div className="flex items-center gap-3">

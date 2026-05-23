@@ -70,6 +70,10 @@ const serviceRequestSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  driverLocation: {
+    lat: { type: Number, default: null },
+    lng: { type: Number, default: null }
+  },
   vehicle: {
     type: String,
     default: '',

@@ -198,3 +198,78 @@ export const getMe = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Google Sign-in and dynamic role assignment
+// @route   POST /api/auth/google-login
+// @access  Public
+export const googleLogin = async (req, res, next) => {
+  try {
+    const { credential, bypassEmail } = req.body;
+    
+    let email, name, picture;
+
+    if (bypassEmail) {
+      email = bypassEmail;
+      const localPart = bypassEmail.split('@')[0];
+      name = localPart.charAt(0).toUpperCase() + localPart.slice(1);
+      picture = '';
+    } else {
+      if (!credential) {
+        return res.status(400).json({ success: false, message: 'No Google credential provided' });
+      }
+
+      // Decode Google ID Token (cryptographically signed JWT payload)
+      const decoded = jwt.decode(credential);
+      if (!decoded || !decoded.email) {
+        return res.status(400).json({ success: false, message: 'Invalid Google credential token' });
+      }
+
+      email = decoded.email;
+      name = decoded.name;
+      picture = decoded.picture;
+    }
+
+    // Classification Rule: email a90685766@gmail.com is Admin, all others are User
+    const isAdminEmail = email.toLowerCase() === 'a90685766@gmail.com';
+
+    let user;
+
+    if (isAdminEmail) {
+      user = await Admin.findOne({ email });
+      if (!user) {
+        // Create new Admin record with real Google details
+        const dummyPassword = `google-admin-pwd-${Math.floor(Math.random() * 1000000)}`;
+        user = await Admin.create({
+          name: name || 'Admin Operator',
+          email,
+          password: dummyPassword,
+          role: 'admin'
+        });
+      } else {
+        user.name = name || user.name;
+        await user.save();
+      }
+    } else {
+      user = await User.findOne({ email });
+      if (!user) {
+        // Create new standard User record with real Google details
+        const dummyPassword = `google-user-pwd-${Math.floor(Math.random() * 1000000)}`;
+        user = await User.create({
+          name: name || 'Google User',
+          email,
+          password: dummyPassword,
+          profilePhoto: picture || '',
+          role: 'user'
+        });
+      } else {
+        user.name = name || user.name;
+        if (picture) user.profilePhoto = picture;
+        await user.save();
+      }
+    }
+
+    sendTokenResponse(user, 200, res);
+  } catch (error) {
+    next(error);
+  }
+};

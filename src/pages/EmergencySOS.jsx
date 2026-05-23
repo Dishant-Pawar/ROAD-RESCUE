@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
-export default function EmergencySOS({ setPage, activeIncident, triggerSOS, cancelIncident }) {
+export default function EmergencySOS({ setPage, activeIncident, triggerSOS, cancelIncident, switchAccount }) {
   const [selectedIssue, setSelectedIssue] = useState('battery');
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [uploadedPhoto, setUploadedPhoto] = useState(null);
@@ -61,7 +61,13 @@ export default function EmergencySOS({ setPage, activeIncident, triggerSOS, canc
 
                 {/* Tester helper card */}
                 <div 
-                  onClick={() => setPage('admin')}
+                  onClick={async () => {
+                    if (switchAccount) {
+                      await switchAccount('admin');
+                    } else {
+                      setPage('admin');
+                    }
+                  }}
                   className="bg-primary/5 hover:bg-primary/10 border border-primary/20 rounded-xl p-4 cursor-pointer max-w-md w-full transition-all group mt-2"
                 >
                   <div className="flex items-center gap-3 text-left">

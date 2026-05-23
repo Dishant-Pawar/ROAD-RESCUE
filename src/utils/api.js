@@ -45,6 +45,11 @@ export const loginAdminApi = async (email, password) => {
   return res.data;
 };
 
+export const googleLoginApi = async (credential, bypassEmail) => {
+  const res = await api.post('/api/auth/google-login', { credential, bypassEmail });
+  return res.data;
+};
+
 export const getMeApi = async () => {
   const res = await api.get('/api/auth/me');
   return res.data;
@@ -59,8 +64,8 @@ export const getActiveIncidentApi = async () => {
   return res.data;
 };
 
-export const createIncidentApi = async (type, issue, loc, reqType) => {
-  const res = await api.post('/api/incidents', { type, issue, loc, reqType });
+export const createIncidentApi = async (type, issue, loc, reqType, latitude, longitude) => {
+  const res = await api.post('/api/incidents', { type, issue, loc, reqType, latitude, longitude });
   if (res.data && res.data.data) {
     res.data.data = formatIncident(res.data.data);
   }
@@ -75,11 +80,16 @@ export const getAllIncidentsApi = async () => {
   return res.data;
 };
 
-export const assignIncidentApi = async (ticketId) => {
-  const res = await api.put(`/api/incidents/${ticketId}/assign`);
+export const assignIncidentApi = async (ticketId, mechanicId) => {
+  const res = await api.put(`/api/incidents/${ticketId}/assign`, { mechanicId });
   if (res.data && res.data.data) {
     res.data.data = formatIncident(res.data.data);
   }
+  return res.data;
+};
+
+export const getMechanicsApi = async () => {
+  const res = await api.get('/api/mechanics');
   return res.data;
 };
 

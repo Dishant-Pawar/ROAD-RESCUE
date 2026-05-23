@@ -6,7 +6,8 @@ import {
   loginMechanic,
   registerAdmin,
   loginAdmin,
-  getMe
+  getMe,
+  googleLogin
 } from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
 
@@ -18,6 +19,7 @@ router.post('/register-mechanic', registerMechanic);
 router.post('/login-mechanic', loginMechanic);
 router.post('/register-admin', registerAdmin);
 router.post('/login-admin', loginAdmin);
+router.post('/google-login', googleLogin);
 router.get('/me', protect, getMe);
 
 export default router;

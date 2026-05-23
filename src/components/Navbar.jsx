@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
-export default function Navbar({ currentPage, setPage, currentUser, switchAccount }) {
+export default function Navbar({ currentPage, setPage, currentUser, switchAccount, handleLogout }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -62,11 +62,11 @@ export default function Navbar({ currentPage, setPage, currentUser, switchAccoun
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               className="w-10 h-10 rounded-full overflow-hidden border border-outline-variant/30 hover:border-primary/50 transition-all flex items-center justify-center bg-surface-container shadow-md focus:outline-none"
             >
-              {currentUser?.avatar ? (
+              {currentUser?.avatar || currentUser?.profilePhoto ? (
                 <img 
                   alt="User Avatar" 
                   className="w-full h-full object-cover animate-in fade-in duration-200" 
-                  src={currentUser.avatar}
+                  src={currentUser.avatar || currentUser.profilePhoto}
                   onError={(e) => { e.target.style.display = 'none'; }}
                 />
               ) : (
@@ -79,11 +79,11 @@ export default function Navbar({ currentPage, setPage, currentUser, switchAccoun
                 {/* User Info Header */}
                 <div className="flex items-center gap-3 pb-3 border-b border-outline-variant/20">
                   <div className="w-12 h-12 rounded-full overflow-hidden border border-outline-variant/40 flex items-center justify-center bg-surface-container">
-                    {currentUser?.avatar ? (
+                    {currentUser?.avatar || currentUser?.profilePhoto ? (
                       <img 
                         alt="Avatar Zoomed" 
                         className="w-full h-full object-cover" 
-                        src={currentUser.avatar}
+                        src={currentUser.avatar || currentUser.profilePhoto}
                       />
                     ) : (
                       <span className="material-symbols-outlined text-2xl text-on-surface-variant">person</span>
@@ -159,6 +159,17 @@ export default function Navbar({ currentPage, setPage, currentUser, switchAccoun
                     className="w-full mt-2 py-2 px-3 rounded bg-primary/10 hover:bg-primary-container/20 text-primary font-label-caps text-[10px] tracking-widest font-bold text-center transition-colors"
                   >
                     GO TO PORTAL COCKPIT
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setIsDropdownOpen(false);
+                    }}
+                    className="w-full mt-2 py-2 px-3 rounded bg-error/10 hover:bg-error/20 border border-error/20 text-error font-label-caps text-[10px] tracking-widest font-bold text-center transition-all flex items-center justify-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">logout</span>
+                    LOGOUT TERMINAL
                   </button>
                 </div>
               </div>

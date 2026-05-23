@@ -1,6 +1,29 @@
-import React from 'react';
+import { useState, useEffect } from 'react';
+import { getClientStatsApi } from '../utils/api';
 
-export default function Home({ setPage, triggerSOS }) {
+export default function Home({ setPage, triggerSOS, currentUser }) {
+  const [stats, setStats] = useState({
+    activeUnitsCount: 142, // beautiful default fallback
+    avgResponse: 13
+  });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await getClientStatsApi();
+        if (res && res.success && res.data) {
+          setStats({
+            activeUnitsCount: res.data.activeUnitsCount || 142,
+            avgResponse: res.data.avgResponse || 13
+          });
+        }
+      } catch (err) {
+        console.warn("Failed to load live client stats on homepage:", err);
+      }
+    };
+    fetchStats();
+  }, [currentUser]);
+
   return (
     <div className="relative min-h-[calc(100vh-80px)] flex flex-col bg-hero-pattern">
       {/* Background Image with Overlay */}
@@ -58,7 +81,7 @@ export default function Home({ setPage, triggerSOS }) {
               </div>
             </div>
             <div>
-              <div className="text-5xl md:text-6xl font-headline-lg text-primary-container font-bold">13m</div>
+              <div className="text-5xl md:text-6xl font-headline-lg text-primary-container font-bold">{stats.avgResponse}m</div>
               <div className="font-title-md text-title-md text-on-surface mt-1">Avg Response Time</div>
               <p className="font-body-sm text-body-sm text-on-surface-variant/70 mt-2">in your current sector</p>
             </div>
@@ -67,7 +90,7 @@ export default function Home({ setPage, triggerSOS }) {
             </div>
             <div className="flex items-center justify-between text-on-surface-variant">
               <span className="font-label-caps text-label-caps text-[11px]">DISPATCH UNITS ACTIVE</span>
-              <span className="font-title-md text-title-md text-primary-container font-bold">142</span>
+              <span className="font-title-md text-title-md text-primary-container font-bold">{stats.activeUnitsCount}</span>
             </div>
           </div>
         </div>

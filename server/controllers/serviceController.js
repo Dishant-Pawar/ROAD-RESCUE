@@ -42,7 +42,7 @@ export const getActiveRequest = async (req, res, next) => {
 // @access  Private/Public (allow optional guest auth to keep it easy)
 export const createRequest = async (req, res, next) => {
   try {
-    const { type, issue, loc, reqType } = req.body;
+    const { type, issue, loc, reqType, latitude, longitude } = req.body;
     
     // Check if there is already an active request
     let activeQuery = { status: { $in: ['Pending', 'Assigned'] } };
@@ -56,9 +56,9 @@ export const createRequest = async (req, res, next) => {
 
     const ticketId = `RR-${Math.floor(Math.random() * 9000) + 1000}`;
 
-    // Randomize coordinates around Connaught Place, India center (28.6304, 77.2177)
-    const randomLat = 28.6304 + (Math.random() - 0.5) * 0.04;
-    const randomLng = 77.2177 + (Math.random() - 0.5) * 0.04;
+    // Use actual client coordinates if provided, otherwise randomize around Connaught Place, India (28.6304, 77.2177)
+    const randomLat = latitude || (28.6304 + (Math.random() - 0.5) * 0.04);
+    const randomLng = longitude || (77.2177 + (Math.random() - 0.5) * 0.04);
 
     let customerVehicleStr = 'Tesla Model S Plaid';
     if (req.user) {
@@ -113,11 +113,24 @@ export const assignRequest = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Ticket not found' });
     }
 
-    // Find active mechanics who are not currently busy
-    const busyMechanicIds = await ServiceRequest.find({ status: 'Assigned' }).distinct('mechanic');
-    let mechanic = await Mechanic.findOne({ status: 'active', _id: { $nin: busyMechanicIds } });
+    const { mechanicId } = req.body;
+    let mechanic;
+
+    if (mechanicId) {
+      const isAlreadyBusy = await ServiceRequest.findOne({ mechanic: mechanicId, status: 'Assigned' });
+      if (isAlreadyBusy) {
+        return res.status(400).json({ success: false, message: 'Technician is currently on duty rescuing another driver. Please dispatch an available responder.' });
+      }
+      mechanic = await Mechanic.findById(mechanicId);
+    }
+
     if (!mechanic) {
-      mechanic = await Mechanic.findOne({ status: 'active' });
+      // Find active mechanics who are not currently busy
+      const busyMechanicIds = await ServiceRequest.find({ status: 'Assigned' }).distinct('mechanic');
+      mechanic = await Mechanic.findOne({ status: 'active', _id: { $nin: busyMechanicIds } });
+      if (!mechanic) {
+        mechanic = await Mechanic.findOne({ status: 'active' });
+      }
     }
 
     // Fallback if no mechanics exist in database at all
@@ -138,6 +151,45 @@ export const assignRequest = async (req, res, next) => {
     ticket.driverName = mechanic.name;
     ticket.driverPhone = mechanic.phone;
     ticket.driverAvatar = mechanic.avatar || '';
+    // Context-Aware Dynamic Dispatch Telemetry Proximity Rule
+    const breakdownLat = ticket.location?.lat || 28.6304;
+    const breakdownLng = ticket.location?.lng || 77.2177;
+    
+    // Classify remote/mountainous non-crowded areas vs. standard public/urban locations
+    const isRemoteArea = 
+      ticket.issue === 'mud' || 
+      ticket.issue === 'flood' ||
+      ticket.issue === 'terrain' ||
+      (ticket.type && ticket.type.toLowerCase().includes('mud')) ||
+      (ticket.type && ticket.type.toLowerCase().includes('flood')) ||
+      (ticket.loc && (
+        ticket.loc.toLowerCase().includes('mountain') ||
+        ticket.loc.toLowerCase().includes('forest') ||
+        ticket.loc.toLowerCase().includes('trail') ||
+        ticket.loc.toLowerCase().includes('hills') ||
+        ticket.loc.toLowerCase().includes('bypass')
+      ));
+      
+    const angle = Math.random() * Math.PI * 2;
+    let distanceDeg;
+    
+    if (isRemoteArea) {
+      // Remote / non-crowded / mountainous area: No driver nearby, starts further away up to 30km-50km
+      // 30 km to 50 km ~ 0.27 to 0.45 degrees offset
+      distanceDeg = 0.27 + Math.random() * 0.18;
+    } else {
+      // Urban / Public location: Default to extremely close proximity of 1km to 3km
+      // 1 km to 3 km ~ 0.009 to 0.027 degrees offset
+      distanceDeg = 0.009 + Math.random() * 0.018;
+    }
+    
+    const startLat = breakdownLat + Math.sin(angle) * distanceDeg;
+    const startLng = breakdownLng + Math.cos(angle) * distanceDeg;
+    
+    ticket.driverLocation = {
+      lat: startLat,
+      lng: startLng
+    };
     ticket.vehicle = mechanic.vehicle ? mechanic.vehicle.name : 'Heavy Tow • Unit #402';
 
     // Append greeting message
@@ -473,14 +525,48 @@ export const getClientStats = async (req, res, next) => {
     const hasUsage = usageAnalytics.some(u => u > 0);
     const finalUsage = hasUsage ? usageAnalytics : [2, 4, 1, 3, 5];
 
+    // 3. Average response time calculated from completed requests
+    const completed = await ServiceRequest.find({ status: 'Completed' });
+    let avgResponse = 12; // default fallback if no completed requests
+    if (completed.length > 0) {
+      const totalEta = completed.reduce((sum, r) => sum + (r.eta || 10), 0);
+      avgResponse = Math.round(totalEta / completed.length);
+    }
+
     res.status(200).json({
       success: true,
       data: {
         activeUnitsCount,
-        usageAnalytics: finalUsage
+        usageAnalytics: finalUsage,
+        avgResponse
       }
     });
   } catch (error) {
     next(error);
   }
 };
+
+// @desc    Get all active mechanics / technicians
+// @route   GET /api/mechanics
+// @access  Private/Admin
+export const getMechanics = async (req, res, next) => {
+  try {
+    const mechanics = await Mechanic.find({ status: 'active' });
+    
+    // Find mechanics who currently have an active assigned request
+    const busyMechanicIds = await ServiceRequest.find({ status: 'Assigned' }).distinct('mechanic');
+    
+    const mechanicsWithBusyState = mechanics.map(mech => {
+      const isBusy = busyMechanicIds.some(id => id && id.toString() === mech._id.toString());
+      return {
+        ...mech.toObject(),
+        isBusy
+      };
+    });
+
+    res.status(200).json({ success: true, count: mechanicsWithBusyState.length, data: mechanicsWithBusyState });
+  } catch (error) {
+    next(error);
+  }
+};
+

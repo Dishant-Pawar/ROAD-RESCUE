@@ -1,6 +1,6 @@
-import React from 'react';
 
-export default function Sidebar({ currentPage, setPage, currentUser, switchAccount }) {
+
+export default function Sidebar({ currentPage, setPage, currentUser, switchAccount, handleLogout }) {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', fill: true },
     ...(currentUser && currentUser.role === 'admin' ? [{ id: 'admin', label: 'Admin Command', icon: 'explore', fill: false }] : []),
@@ -13,11 +13,15 @@ export default function Sidebar({ currentPage, setPage, currentUser, switchAccou
       {/* Brand Header */}
       <div className="px-6 mb-8 flex items-center gap-3">
         <div className="w-10 h-10 rounded-full overflow-hidden border border-outline-variant/30 flex items-center justify-center bg-surface-container">
-          <img 
-            alt="Logistics Commander Avatar" 
-            className="w-full h-full object-cover" 
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuAsh4C5iHWzKRxWfShZVM8eiZPzMc3kWhiM5zSVvj0-DX00SRwdrB7Z5JaWl1boPu-27zdJYJqPhMKCamr0tHZtxdAothXlGLbuCQaQhXAwfvi0BHd-JqukyDfSm_uO2tfYrddJJKONqbw8ss5DKjBQz0XCA6wB3xFhvBD8AEYpATSUB_3LlXs1jGgMpcCWUwq9wgwp2zHMLsw1XPjHf_l8sUGP5kenHyHymqAADctVFcT1HLdutUTLiwrvxumCiMPoGifpYxVB6pU"
-          />
+          {currentUser?.avatar || currentUser?.profilePhoto ? (
+            <img 
+              alt="Logistics Commander Avatar" 
+              className="w-full h-full object-cover" 
+              src={currentUser.avatar || currentUser.profilePhoto}
+            />
+          ) : (
+            <span className="material-symbols-outlined text-on-surface-variant">person</span>
+          )}
         </div>
         <div className="text-left">
           <h2 className="font-title-md text-title-md text-on-surface font-bold leading-tight">Command Center</h2>
@@ -80,11 +84,11 @@ export default function Sidebar({ currentPage, setPage, currentUser, switchAccou
         <div className="flex justify-between items-center pt-4 border-t border-outline-variant/20">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center overflow-hidden border border-outline-variant">
-              {currentUser?.avatar ? (
+              {currentUser?.avatar || currentUser?.profilePhoto ? (
                 <img 
                   alt="Dispatcher Headshot" 
                   className="w-full h-full object-cover animate-in fade-in duration-200" 
-                  src={currentUser.avatar}
+                  src={currentUser.avatar || currentUser.profilePhoto}
                 />
               ) : (
                 <span className="material-symbols-outlined text-on-surface-variant">person</span>
@@ -100,16 +104,29 @@ export default function Sidebar({ currentPage, setPage, currentUser, switchAccou
             </div>
           </div>
           
-          {/* Quick Account Switcher inside Sidebar */}
-          <button
-            onClick={() => switchAccount(currentUser?.role === 'admin' ? 'user' : 'admin')}
-            title={`Switch to ${currentUser?.role === 'admin' ? 'Consumer' : 'Admin'} clearance`}
-            className="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-variant flex items-center justify-center border border-outline-variant/30 hover:border-primary/50 text-on-surface-variant hover:text-primary transition-all duration-300 shadow-md group focus:outline-none"
-          >
-            <span className="material-symbols-outlined text-[16px] group-hover:rotate-180 transition-transform duration-500">
-              cached
-            </span>
-          </button>
+          <div className="flex gap-2 shrink-0">
+            {/* Quick Account Switcher inside Sidebar */}
+            <button
+              onClick={() => switchAccount(currentUser?.role === 'admin' ? 'user' : 'admin')}
+              title={`Switch to ${currentUser?.role === 'admin' ? 'Consumer' : 'Admin'} clearance`}
+              className="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-variant flex items-center justify-center border border-outline-variant/30 hover:border-primary/50 text-on-surface-variant hover:text-primary transition-all duration-300 shadow-md group focus:outline-none"
+            >
+              <span className="material-symbols-outlined text-[16px] group-hover:rotate-180 transition-transform duration-500">
+                cached
+              </span>
+            </button>
+
+            {/* Logout button inside Sidebar */}
+            <button
+              onClick={handleLogout}
+              title="Logout secure terminal"
+              className="w-8 h-8 rounded-lg bg-error/10 hover:bg-error/20 border border-error/20 text-error flex items-center justify-center transition-all duration-300 shadow-md focus:outline-none"
+            >
+              <span className="material-symbols-outlined text-[16px]">
+                logout
+              </span>
+            </button>
+          </div>
         </div>
       </div>
     </nav>

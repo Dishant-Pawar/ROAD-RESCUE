@@ -72,48 +72,211 @@ const seedData = async () => {
 
     // 4. Create Mechanics
     console.log('🌱 Seeding Mechanics...');
-    const mechanic1 = await Mechanic.create({
-      name: 'David R.',
-      email: 'david@roadrescue.com',
-      password: 'roadrescue123',
-      phone: '+1 (555) 019-2834',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuByN0gReMf2EVTRsGvzJIfQkt4dNkMtXxe95dlSRKbikVzLy0AcAOwpM8ZcNBrFQ_I1kRs1s2PtxHKbUJOYvRCsPXgsbIX6REt6qWqmgb_wcVrGeD5fgoT_mjpGjtNTGEKoxy9KYXCDW5Ox6kZjGV5MtsQWklnzS9LmIWqE6Cm6gyUOKmeVudbUAPl0iV_uBYpPci72bBQXJB0QeCEejv0N6T4A9vOMdgQ69sVufeLcbdn-9BSy4HrLTxe1RK7Sug46W8CnkJcD7f0',
-      status: 'active',
-      specialty: 'Heavy Towing & Flatbed',
-      vehicle: {
-        name: 'Heavy Tow • Unit #402',
-        plate: 'RD-RESC-9'
+    const mechanicsList = await Mechanic.create([
+      {
+        name: 'David R.',
+        email: 'david@roadrescue.com',
+        password: 'roadrescue123',
+        phone: '+1 (555) 019-2834',
+        avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuByN0gReMf2EVTRsGvzJIfQkt4dNkMtXxe95dlSRKbikVzLy0AcAOwpM8ZcNBrFQ_I1kRs1s2PtxHKbUJOYvRCsPXgsbIX6REt6qWqmgb_wcVrGeD5fgoT_mjpGjtNTGEKoxy9KYXCDW5Ox6kZjGV5MtsQWklnzS9LmIWqE6Cm6gyUOKmeVudbUAPl0iV_uBYpPci72bBQXJB0QeCEejv0N6T4A9vOMdgQ69sVufeLcbdn-9BSy4HrLTxe1RK7Sug46W8CnkJcD7f0',
+        status: 'active',
+        specialty: 'Heavy Towing & Flatbed',
+        vehicle: {
+          name: 'Heavy Tow • Unit #402',
+          plate: 'RD-RESC-9'
+        },
+        location: {
+          lat: 28.6304,
+          lng: 77.2177,
+          address: 'Connaught Place Hub, Delhi'
+        },
+        rating: 4.9,
+        reviewsCount: 24
       },
-      location: {
-        lat: 28.6304,
-        lng: 77.2177,
-        address: 'Connaught Place Hub, Delhi'
+      {
+        name: 'Marcus T.',
+        email: 'marcus@roadrescue.com',
+        password: 'roadrescue123',
+        phone: '+1 (555) 018-9982',
+        avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDQvr_HDAe8dIuPOCeH_hCSd8oy2NmxlGvMzAXNKZDtXqxmAQgsaGSbBp5nFz1F94bhRK9iZRp1PDfy-7_3e-n4HIisgKFOcvr6pG4Cv4oPIneIbmFH9Sqz2u75z1w8iPk2Z5oty9UnXzkmiSdHTB3bl_fJa8WUNPXSIxYtC-S6m6-wYXVBvz6dJYp08B6AZbwAhF4TX5NrkjgjyvQvPkZQY-4drXs-3zXAg-CXmBGaSn1SE_x-a1PCjSgYqcK0sA0xhEeAkhUcRX4',
+        status: 'active',
+        specialty: 'Roadside Recovery & Electrical',
+        vehicle: {
+          name: 'Flatbed Tow • Unit #442',
+          plate: 'RD-FLAT-4'
+        },
+        location: {
+          lat: 28.6415,
+          lng: 77.1248,
+          address: 'Rajouri Garden Sector, Delhi'
+        },
+        rating: 4.8,
+        reviewsCount: 19
       },
-      rating: 4.9,
-      reviewsCount: 24
-    });
-
-    const mechanic2 = await Mechanic.create({
-      name: 'Marcus T.',
-      email: 'marcus@roadrescue.com',
-      password: 'roadrescue123',
-      phone: '+1 (555) 018-9982',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDQvr_HDAe8dIuPOCeH_hCSd8oy2NmxlGvMzAXNKZDtXqxmAQgsaGSbBp5nFz1F94bhRK9iZRp1PDfy-7_3e-n4HIisgKFOcvr6pG4Cv4oPIneIbmFH9Sqz2u75z1w8iPk2Z5oty9UnXzkmiSdHTB3bl_fJa8WUNPXSIxYtC-S6m6-wYXVBvz6dJYp08B6AZbwAhF4TX5NrkjgjyvQvPkZQY-4drXs-3zXAg-CXmBGaSn1SE_x-a1PCjSgYqcK0sA0xhEeAkhUcRX4',
-      status: 'active',
-      specialty: 'Roadside Recovery & Electrical',
-      vehicle: {
-        name: 'Flatbed Tow • Unit #442',
-        plate: 'RD-FLAT-4'
+      {
+        name: 'Sarah K.',
+        email: 'sarah@roadrescue.com',
+        password: 'roadrescue123',
+        phone: '+1 (555) 012-1082',
+        avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDQvr_HDAe8dIuPOCeH_hCSd8oy2NmxlGvMzAXNKZDtXqxmAQgsaGSbBp5nFz1F94bhRK9iZRp1PDfy-7_3e-n4HIisgKFOcvr6pG4Cv4oPIneIbmFH9Sqz2u75z1w8iPk2Z5oty9UnXzkmiSdHTB3bl_fJa8WUNPXSIxYtC-S6m6-wYXVBvz6dJYp08B6AZbwAhF4TX5NrkjgjyvQvPkZQY-4drXs-3zXAg-CXmBGaSn1SE_x-a1PCjSgYqcK0sA0xhEeAkhUcRX4',
+        status: 'active',
+        specialty: 'EV Diagnostics & Battery Grid',
+        vehicle: {
+          name: 'Mobile Charging Grid • Unit #108',
+          plate: 'RD-GRID-8'
+        },
+        location: {
+          lat: 28.6139,
+          lng: 77.2090,
+          address: 'Chanakyapuri Area, Delhi'
+        },
+        rating: 4.95,
+        reviewsCount: 31
       },
-      location: {
-        lat: 28.6415,
-        lng: 77.1248,
-        address: 'Rajouri Garden Sector, Delhi'
+      {
+        name: 'John L.',
+        email: 'john@roadrescue.com',
+        password: 'roadrescue123',
+        phone: '+1 (555) 013-2152',
+        avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuByN0gReMf2EVTRsGvzJIfQkt4dNkMtXxe95dlSRKbikVzLy0AcAOwpM8ZcNBrFQ_I1kRs1s2PtxHKbUJOYvRCsPXgsbIX6REt6qWqmgb_wcVrGeD5fgoT_mjpGjtNTGEKoxy9KYXCDW5Ox6kZjGV5MtsQWklnzS9LmIWqE6Cm6gyUOKmeVudbUAPl0iV_uBYpPci72bBQXJB0QeCEejv0N6T4A9vOMdgQ69sVufeLcbdn-9BSy4HrLTxe1RK7Sug46W8CnkJcD7f0',
+        status: 'active',
+        specialty: 'Flat Tire Repair & Fitting',
+        vehicle: {
+          name: 'Rapid Tire Unit • Unit #215',
+          plate: 'RD-TIRE-2'
+        },
+        location: {
+          lat: 28.6562,
+          lng: 77.2309,
+          address: 'Chandni Chowk Market, Delhi'
+        },
+        rating: 4.7,
+        reviewsCount: 15
       },
-      rating: 4.8,
-      reviewsCount: 19
-    });
-    console.log(`✅ Created Mechanics: ${mechanic1.name}, ${mechanic2.name}`);
+      {
+        name: 'Elena M.',
+        email: 'elena@roadrescue.com',
+        password: 'roadrescue123',
+        phone: '+1 (555) 014-3032',
+        avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDQvr_HDAe8dIuPOCeH_hCSd8oy2NmxlGvMzAXNKZDtXqxmAQgsaGSbBp5nFz1F94bhRK9iZRp1PDfy-7_3e-n4HIisgKFOcvr6pG4Cv4oPIneIbmFH9Sqz2u75z1w8iPk2Z5oty9UnXzkmiSdHTB3bl_fJa8WUNPXSIxYtC-S6m6-wYXVBvz6dJYp08B6AZbwAhF4TX5NrkjgjyvQvPkZQY-4drXs-3zXAg-CXmBGaSn1SE_x-a1PCjSgYqcK0sA0xhEeAkhUcRX4',
+        status: 'active',
+        specialty: 'Lockout & Mobile Locksmith',
+        vehicle: {
+          name: 'Locksmith Mobile • Unit #303',
+          plate: 'RD-LOCK-3'
+        },
+        location: {
+          lat: 28.5355,
+          lng: 77.2511,
+          address: 'Kalkaji Area, New Delhi'
+        },
+        rating: 4.85,
+        reviewsCount: 22
+      },
+      {
+        name: 'Carlos V.',
+        email: 'carlos@roadrescue.com',
+        password: 'roadrescue123',
+        phone: '+1 (555) 015-5092',
+        avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuByN0gReMf2EVTRsGvzJIfQkt4dNkMtXxe95dlSRKbikVzLy0AcAOwpM8ZcNBrFQ_I1kRs1s2PtxHKbUJOYvRCsPXgsbIX6REt6qWqmgb_wcVrGeD5fgoT_mjpGjtNTGEKoxy9KYXCDW5Ox6kZjGV5MtsQWklnzS9LmIWqE6Cm6gyUOKmeVudbUAPl0iV_uBYpPci72bBQXJB0QeCEejv0N6T4A9vOMdgQ69sVufeLcbdn-9BSy4HrLTxe1RK7Sug46W8CnkJcD7f0',
+        status: 'active',
+        specialty: 'Mud & Winch Extraction',
+        vehicle: {
+          name: '4x4 Winch Rig • Unit #509',
+          plate: 'RD-WINC-5'
+        },
+        location: {
+          lat: 28.5244,
+          lng: 77.1855,
+          address: 'Mehrauli Forest Fringe, Delhi'
+        },
+        rating: 4.9,
+        reviewsCount: 18
+      },
+      {
+        name: 'Priya S.',
+        email: 'priya@roadrescue.com',
+        password: 'roadrescue123',
+        phone: '+1 (555) 016-1222',
+        avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDQvr_HDAe8dIuPOCeH_hCSd8oy2NmxlGvMzAXNKZDtXqxmAQgsaGSbBp5nFz1F94bhRK9iZRp1PDfy-7_3e-n4HIisgKFOcvr6pG4Cv4oPIneIbmFH9Sqz2u75z1w8iPk2Z5oty9UnXzkmiSdHTB3bl_fJa8WUNPXSIxYtC-S6m6-wYXVBvz6dJYp08B6AZbwAhF4TX5NrkjgjyvQvPkZQY-4drXs-3zXAg-CXmBGaSn1SE_x-a1PCjSgYqcK0sA0xhEeAkhUcRX4',
+        status: 'active',
+        specialty: 'Battery Jumpstart & Alternators',
+        vehicle: {
+          name: 'Diagnostics Van • Unit #122',
+          plate: 'RD-DIAG-1'
+        },
+        location: {
+          lat: 28.5708,
+          lng: 77.2289,
+          address: 'Lodi Colony Grid, Delhi'
+        },
+        rating: 4.75,
+        reviewsCount: 12
+      },
+      {
+        name: 'Thomas B.',
+        email: 'thomas@roadrescue.com',
+        password: 'roadrescue123',
+        phone: '+1 (555) 017-7042',
+        avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuByN0gReMf2EVTRsGvzJIfQkt4dNkMtXxe95dlSRKbikVzLy0AcAOwpM8ZcNBrFQ_I1kRs1s2PtxHKbUJOYvRCsPXgsbIX6REt6qWqmgb_wcVrGeD5fgoT_mjpGjtNTGEKoxy9KYXCDW5Ox6kZjGV5MtsQWklnzS9LmIWqE6Cm6gyUOKmeVudbUAPl0iV_uBYpPci72bBQXJB0QeCEejv0N6T4A9vOMdgQ69sVufeLcbdn-9BSy4HrLTxe1RK7Sug46W8CnkJcD7f0',
+        status: 'active',
+        specialty: 'Flood & Water Rescue Logistics',
+        vehicle: {
+          name: 'Water Extraction • Unit #704',
+          plate: 'RD-WATR-7'
+        },
+        location: {
+          lat: 28.6256,
+          lng: 77.3712,
+          address: 'Noida Sector Bypass, NCR'
+        },
+        rating: 4.8,
+        reviewsCount: 14
+      },
+      {
+        name: 'Yuki T.',
+        email: 'yuki@roadrescue.com',
+        password: 'roadrescue123',
+        phone: '+1 (555) 018-9112',
+        avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDQvr_HDAe8dIuPOCeH_hCSd8oy2NmxlGvMzAXNKZDtXqxmAQgsaGSbBp5nFz1F94bhRK9iZRp1PDfy-7_3e-n4HIisgKFOcvr6pG4Cv4oPIneIbmFH9Sqz2u75z1w8iPk2Z5oty9UnXzkmiSdHTB3bl_fJa8WUNPXSIxYtC-S6m6-wYXVBvz6dJYp08B6AZbwAhF4TX5NrkjgjyvQvPkZQY-4drXs-3zXAg-CXmBGaSn1SE_x-a1PCjSgYqcK0sA0xhEeAkhUcRX4',
+        status: 'active',
+        specialty: 'Mobile Engine Workshop',
+        vehicle: {
+          name: 'Mobile Workshop • Unit #911',
+          plate: 'RD-WORK-9'
+        },
+        location: {
+          lat: 28.5452,
+          lng: 77.2688,
+          address: 'Okhla Industrial Phase, Delhi'
+        },
+        rating: 4.9,
+        reviewsCount: 20
+      },
+      {
+        name: 'Alex H.',
+        email: 'alex@roadrescue.com',
+        password: 'roadrescue123',
+        phone: '+1 (555) 019-1122',
+        avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuByN0gReMf2EVTRsGvzJIfQkt4dNkMtXxe95dlSRKbikVzLy0AcAOwpM8ZcNBrFQ_I1kRs1s2PtxHKbUJOYvRCsPXgsbIX6REt6qWqmgb_wcVrGeD5fgoT_mjpGjtNTGEKoxy9KYXCDW5Ox6kZjGV5MtsQWklnzS9LmIWqE6Cm6gyUOKmeVudbUAPl0iV_uBYpPci72bBQXJB0QeCEejv0N6T4A9vOMdgQ69sVufeLcbdn-9BSy4HrLTxe1RK7Sug46W8CnkJcD7f0',
+        status: 'active',
+        specialty: 'Fuel Delivery & Fluid Top-ups',
+        vehicle: {
+          name: 'Fuel Carrier • Unit #112',
+          plate: 'RD-FUEL-1'
+        },
+        location: {
+          lat: 28.5921,
+          lng: 77.0425,
+          address: 'Dwarka Sector Grid, New Delhi'
+        },
+        rating: 4.65,
+        reviewsCount: 8
+      }
+    ]);
+    const mechanic1 = mechanicsList[0];
+    const mechanic2 = mechanicsList[1];
+    console.log(`✅ Created 10 Mechanics including ${mechanic1.name} and ${mechanic2.name}`);
 
     // 5. Create ServiceRequests (Active and past ones)
     console.log('🌱 Seeding Service Requests...');
@@ -137,6 +300,10 @@ const seedData = async () => {
       driverPhone: mechanic2.phone,
       driverAvatar: mechanic2.avatar,
       vehicle: mechanic2.vehicle.name,
+      driverLocation: {
+        lat: mechanic2.location.lat,
+        lng: mechanic2.location.lng
+      },
       chatHistory: [
         {
           sender: 'system',

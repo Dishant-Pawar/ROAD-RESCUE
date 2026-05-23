@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
@@ -6,6 +6,7 @@ import Footer from './components/Footer';
 import {
   loginUserApi,
   loginAdminApi,
+  getMeApi,
   getActiveIncidentApi,
   createIncidentApi,
   getAllIncidentsApi,
@@ -15,7 +16,8 @@ import {
   addChatMessageApi,
   getPaymentsApi,
   getVehiclesApi,
-  getNotificationsApi
+  getNotificationsApi,
+  googleLoginApi
 } from './utils/api';
 
 // Pages
@@ -30,6 +32,9 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState('home');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [isBypassMode, setIsBypassMode] = useState(false);
+  const [bypassEmail, setBypassEmail] = useState('');
+  const [loadingBypass, setLoadingBypass] = useState(false);
 
   // Synchronized System States
   const [activeIncident, setActiveIncident] = useState(null);
@@ -115,7 +120,7 @@ export default function App() {
         } else {
           setActiveIncident(null);
         }
-      } catch (err) {
+      } catch {
         setActiveIncident(null);
       }
       await fetchHistory();
@@ -130,7 +135,7 @@ export default function App() {
             const activeOnly = allRes.data.filter(t => t.status === 'Pending' || t.status === 'Assigned');
             setAdminIncidents(activeOnly);
           }
-        } catch (e) {
+        } catch {
           setAdminIncidents([]);
         }
       } else {
@@ -142,67 +147,191 @@ export default function App() {
     }
   };
 
+  const handleGoogleLogin = async (response) => {
+    try {
+      const res = await googleLoginApi(response.credential);
+      if (res && res.success && res.user && res.token) {
+        localStorage.setItem('token', res.token);
+        localStorage.setItem('user', JSON.stringify(res.user));
+        setCurrentUser(res.user);
+        
+        triggerToast(`👋 Authorized grid connection secured. Welcome, ${res.user.name}!`, 'success');
+        
+        if (res.user.role === 'admin') {
+          setCurrentPage('admin');
+        } else {
+          setCurrentPage('dashboard');
+        }
+        
+        try {
+          const activeRes = await getActiveIncidentApi();
+          if (activeRes && activeRes.success) {
+            setActiveIncident(activeRes.data || null);
+          }
+        } catch (err) {
+          console.warn("Failed to load active incident on Google login:", err);
+        }
+        await fetchHistory();
+        await fetchVehicles();
+        await fetchNotifications();
+      }
+    } catch (err) {
+      console.error("Google Sign-In backend verification failed:", err);
+      triggerToast("❌ Google Verification failed. Access Denied.", "error");
+    }
+  };
+
+  const handleBypassLogin = async (e) => {
+    e.preventDefault();
+    if (!bypassEmail) return;
+    setLoadingBypass(true);
+    try {
+      const res = await googleLoginApi(null, bypassEmail);
+      if (res && res.success && res.user && res.token) {
+        localStorage.setItem('token', res.token);
+        localStorage.setItem('user', JSON.stringify(res.user));
+        setCurrentUser(res.user);
+        
+        triggerToast(`👋 Authorized Sandbox secured. Welcome Operator, ${res.user.name}!`, 'success');
+        
+        if (res.user.role === 'admin') {
+          setCurrentPage('admin');
+        } else {
+          setCurrentPage('dashboard');
+        }
+        
+        try {
+          const activeRes = await getActiveIncidentApi();
+          if (activeRes && activeRes.success) {
+            setActiveIncident(activeRes.data || null);
+          }
+        } catch (err) {
+          console.warn("Failed to load active incident on Sandbox login:", err);
+        }
+        await fetchHistory();
+        await fetchVehicles();
+        await fetchNotifications();
+      }
+    } catch (err) {
+      console.error("Sandbox authentication failed:", err);
+      triggerToast("❌ Sandbox Connection failed.", "error");
+    } finally {
+      setLoadingBypass(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setCurrentUser(null);
+    setActiveIncident(null);
+    setCurrentPage('home');
+    triggerToast('🚪 Logged out successfully. Terminal secure.', 'info');
+  };
+
   useEffect(() => {
-    // 1. Authenticate as the default user or admin if not already logged in
+    let checkInterval;
+    if (!currentUser) {
+      const initButton = () => {
+        if (typeof window.google !== 'undefined') {
+          window.google.accounts.id.initialize({
+            client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || '60313722264-j2a9b50nk9fv3qus8mosah0meqc1fm1v.apps.googleusercontent.com',
+            callback: handleGoogleLogin
+          });
+          const btnElem = document.getElementById('google-signin-btn');
+          if (btnElem) {
+            window.google.accounts.id.renderButton(
+              btnElem,
+              { theme: 'filled_black', size: 'large', width: '320', shape: 'pill' }
+            );
+            clearInterval(checkInterval);
+          }
+        }
+      };
+      
+      checkInterval = setInterval(initButton, 200);
+      initButton();
+    }
+    return () => clearInterval(checkInterval);
+  }, [currentUser, handleGoogleLogin]);
+
+  useEffect(() => {
     const initAuth = async () => {
-      let userObj = null;
       try {
         let token = localStorage.getItem('token');
         let localUserStr = localStorage.getItem('user');
-        if (!token || !localUserStr) {
-          const loginData = await loginUserApi('user@roadrescue.com', 'roadrescue123');
-          localStorage.setItem('token', loginData.token);
-          localStorage.setItem('user', JSON.stringify(loginData.user));
-          userObj = loginData.user;
+        if (token && localUserStr) {
+          try {
+            const meRes = await getMeApi();
+            if (meRes && meRes.success && meRes.data) {
+              setCurrentUser(meRes.data);
+              console.log("Authenticated verified user:", meRes.data);
+            } else {
+              throw new Error("Invalid session data");
+            }
+          } catch (validateErr) {
+            console.warn("Session validation failed. Stale token cleared:", validateErr);
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            setCurrentUser(null);
+            return;
+          }
         } else {
-          userObj = JSON.parse(localUserStr);
+          setCurrentUser(null);
         }
-        setCurrentUser(userObj);
-        console.log("Logged in user:", userObj);
-      } catch (err) {
-        console.error("Autologin user failed:", err);
+      } catch {
+        setCurrentUser(null);
       }
       
-      // 2. Fetch active incident
-      try {
-        const activeRes = await getActiveIncidentApi();
-        if (activeRes && activeRes.success && activeRes.data) {
-          setActiveIncident(activeRes.data);
-          if (activeRes.data.status === 'Assigned') {
-            setCurrentPage('tracking');
-          } else if (activeRes.data.status === 'Pending') {
-            setCurrentPage('emergency');
+      // Fetch telemetry details if token exists
+      if (localStorage.getItem('token')) {
+        try {
+          const activeRes = await getActiveIncidentApi();
+          if (activeRes && activeRes.success && activeRes.data) {
+            setActiveIncident(activeRes.data);
+            if (activeRes.data.status === 'Assigned') {
+              setCurrentPage('tracking');
+            } else if (activeRes.data.status === 'Pending') {
+              setCurrentPage('emergency');
+            }
+          }
+        } catch (err) {
+          console.error("Failed to load active incident:", err);
+          if (err.response?.status === 401) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            setCurrentUser(null);
+            return;
           }
         }
-      } catch (err) {
-        console.error("Failed to load active incident:", err);
-      }
 
-      // 3. Fetch completed payments/history
-      await fetchHistory();
+        await fetchHistory();
 
-      // 4. Fetch all incidents to prime Admin Panel
-      try {
-        const allRes = await getAllIncidentsApi();
-        if (allRes && allRes.success && allRes.data) {
-          const activeOnly = allRes.data.filter(t => t.status === 'Pending' || t.status === 'Assigned');
-          setAdminIncidents(activeOnly);
+        try {
+          const allRes = await getAllIncidentsApi();
+          if (allRes && allRes.success && allRes.data) {
+            const activeOnly = allRes.data.filter(t => t.status === 'Pending' || t.status === 'Assigned');
+            setAdminIncidents(activeOnly);
+          }
+        } catch (err) {
+          console.error("Failed to load admin incidents:", err);
+          if (err.response?.status === 401) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            setCurrentUser(null);
+            return;
+          }
         }
-      } catch (err) {
-        console.error("Failed to load admin incidents:", err);
+
+        await fetchVehicles();
+        await fetchNotifications();
       }
-
-      // 5. Fetch registered vehicles
-      await fetchVehicles();
-
-      // 6. Fetch user notifications
-      await fetchNotifications();
     };
     
     initAuth();
 
     // Setup Socket.io client connection for instantaneous updates
-    const socketUrl = import.meta.env.PROD ? window.location.origin : 'http://localhost:5000';
+    const socketUrl = import.meta.env.PROD ? window.location.origin : 'http://127.0.0.1:5000';
     const socket = io(socketUrl);
 
     socket.on('connect', () => {
@@ -321,41 +450,64 @@ export default function App() {
 
     const info = issueMapping[issueCategory] || { type: 'Emergency Rescue', req: 'Standard Rescue' };
 
-    try {
-      const res = await createIncidentApi(info.type, issueCategory, 'Sector 4 - Downtown Grid', info.req);
-      if (res && res.success) {
-        setActiveIncident(res.data);
-        setAdminIncidents(prev => [res.data, ...prev]);
-        setCurrentPage('emergency');
-        triggerToast(
-          `🚨 Beacon Active: Registered Ticket #${res.data.id}. Awaiting Admin Command Assignment.`,
-          'error',
-          'Go to Command Center',
-          () => setCurrentPage('admin')
-        );
+    const dispatchSos = async (lat, lng, addressString = 'Sector 4 - Downtown Grid') => {
+      try {
+        const res = await createIncidentApi(info.type, issueCategory, addressString, info.req, lat, lng);
+        if (res && res.success) {
+          setActiveIncident(res.data);
+          setAdminIncidents(prev => [res.data, ...prev]);
+          setCurrentPage('emergency');
+          triggerToast(
+            `🚨 Beacon Active: Registered Ticket #${res.data.id}. Awaiting Admin Command Assignment.`,
+            'error',
+            'Go to Command Center',
+            () => setCurrentPage('admin')
+          );
+        }
+      } catch (error) {
+        console.error("SOS Trigger Error:", error);
+        const errMsg = error.response?.data?.message || 'Failed to establish satellite link to backend database.';
+        triggerToast(`❌ ${errMsg}`, 'error');
       }
-    } catch (error) {
-      console.error("SOS Trigger Error:", error);
-      triggerToast('❌ Failed to establish satellite link to backend database.', 'error');
+    };
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          console.log(`📍 Acquired Geolocation: ${lat}, ${lng}`);
+          dispatchSos(lat, lng, 'Current Location (Broadcast Frequency)');
+        },
+        (error) => {
+          console.warn("⚠️ Geolocation blocked or failed. Using randomized Connaught Place coordinates:", error);
+          dispatchSos(null, null, 'Sector 4 - Downtown Grid');
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      );
+    } else {
+      console.warn("⚠️ Browser does not support geolocation. Using default grid.");
+      dispatchSos(null, null, 'Sector 4 - Downtown Grid');
     }
   };
 
   // Assign Ticket Callback (Admin Command)
-  const assignIncident = async (id) => {
+  const assignIncident = async (id, mechanicId) => {
     try {
-      const res = await assignIncidentApi(id);
+      const res = await assignIncidentApi(id, mechanicId);
       if (res && res.success) {
         setAdminIncidents(prev => prev.map(t => t.id === id ? res.data : t));
+        const assignedDriverName = res.data.driverName || 'David R.';
         if (activeIncident && activeIncident.id === id) {
           setActiveIncident(res.data);
           triggerToast(
-            `🚒 Dispatch Assigned! Driver David R. is now en route to your sector.`,
+            `🚒 Dispatch Assigned! Driver ${assignedDriverName} is now en route to your sector.`,
             'success',
             'Track Rescue',
             () => setCurrentPage('tracking')
           );
         } else {
-          triggerToast(`🚒 Command Confirmed: Incident #${id} successfully assigned to carrier drone unit.`, 'success');
+          triggerToast(`🚒 Command Confirmed: Incident #${id} successfully assigned to ${assignedDriverName}.`, 'success');
         }
       }
     } catch (error) {
@@ -436,7 +588,7 @@ export default function App() {
   const renderPage = () => {
     switch (currentPage) {
       case 'home':
-        return <Home setPage={setCurrentPage} triggerSOS={triggerSOS} />;
+        return <Home setPage={setCurrentPage} triggerSOS={triggerSOS} currentUser={currentUser} />;
       case 'services':
         return <Services setPage={setCurrentPage} triggerSOS={triggerSOS} />;
       case 'emergency':
@@ -446,6 +598,7 @@ export default function App() {
             activeIncident={activeIncident}
             triggerSOS={triggerSOS}
             cancelIncident={cancelIncident}
+            switchAccount={switchAccount}
           />
         );
       case 'tracking':
@@ -454,6 +607,7 @@ export default function App() {
             setPage={setCurrentPage}
             activeIncident={activeIncident}
             addChatMessage={addChatMessage}
+            switchAccount={switchAccount}
           />
         );
       case 'dashboard':
@@ -493,11 +647,127 @@ export default function App() {
           />
         );
       default:
-        return <Home setPage={setCurrentPage} triggerSOS={triggerSOS} />;
+        return <Home setPage={setCurrentPage} triggerSOS={triggerSOS} currentUser={currentUser} />;
     }
   };
 
   const showSidebar = currentPage === 'dashboard' || currentPage === 'admin';
+
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-[#0e0e0e] text-on-surface flex items-center justify-center relative overflow-hidden font-body-lg antialiased">
+        {/* Animated Background Grids */}
+        <div className="absolute inset-0 bg-hero-pattern opacity-30 z-0"></div>
+        <div className="absolute top-0 left-0 right-0 bottom-0 pointer-events-none z-0" style={{
+          background: "radial-gradient(circle at 50% 40%, rgba(0, 242, 255, 0.1) 0%, transparent 60%)"
+        }}></div>
+
+        {/* Floating tech nodes */}
+        <div className="absolute top-1/4 left-1/4 w-32 h-32 rounded-full bg-primary/5 blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-40 h-40 rounded-full bg-secondary/5 blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
+
+        {/* Lock Card Container */}
+        <div className="relative z-10 w-full max-w-md p-8 glass-panel-active rounded-2xl border border-primary-container/20 shadow-2xl flex flex-col items-center gap-8 text-center mx-4 select-none">
+          
+          {/* Neon Logo & Icon */}
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-16 h-16 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary shadow-[0_0_20px_rgba(0,242,255,0.25)] relative sos-pulse animate-pulse">
+              <span className="material-symbols-outlined text-[36px]">security</span>
+            </div>
+            <div>
+              <h1 className="text-3xl font-headline-lg font-bold tracking-tight text-primary-container leading-none">RoadRescue</h1>
+              <p className="font-label-caps text-[10px] uppercase tracking-widest text-on-surface-variant/80 mt-2 font-bold">Tactical Deployment Network</p>
+            </div>
+          </div>
+
+          <div className="w-full h-px bg-outline-variant/20"></div>
+
+          {/* Secure Message */}
+          <div className="flex flex-col gap-2">
+            <h2 className="font-title-md text-lg text-on-surface font-bold">Secure Verification Required</h2>
+            <p className="font-body-sm text-sm text-on-surface-variant leading-relaxed">
+              All rescue logistics, tactical map interfaces, and telemetry grids are cryptographically secured. Sign in with Google to authenticate your terminal.
+            </p>
+          </div>
+
+          {/* Google Button / Bypass Wrapper */}
+          <div className="flex flex-col gap-4 w-full relative z-20">
+            {!isBypassMode ? (
+              <div className="flex flex-col gap-4 w-full">
+                <div id="google-signin-btn" className="shadow-[0_4px_20px_rgba(0,0,0,0.4)] rounded-full hover:scale-105 transition-transform duration-300 flex justify-center"></div>
+                
+                <div className="flex items-center my-1 text-on-surface-variant/20">
+                  <div className="h-px bg-current flex-grow"></div>
+                  <span className="px-3 font-label-caps text-[9px] uppercase tracking-widest text-on-surface-variant/40">OR</span>
+                  <div className="h-px bg-current flex-grow"></div>
+                </div>
+
+                <button 
+                  onClick={() => setIsBypassMode(true)}
+                  className="py-2.5 px-4 rounded border border-outline-variant/30 hover:border-primary/50 bg-surface-container-high/40 hover:bg-surface-variant/40 text-primary font-label-caps text-[10px] tracking-widest font-bold uppercase transition-all flex items-center justify-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-[16px]">terminal</span>
+                  Developer Sandbox Bypass
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleBypassLogin} className="flex flex-col gap-4 w-full text-left">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-label-caps font-bold tracking-widest text-on-surface-variant">Developer Email</label>
+                  <input 
+                    type="email" 
+                    required
+                    value={bypassEmail}
+                    onChange={(e) => setBypassEmail(e.target.value)}
+                    placeholder="a90685766@gmail.com"
+                    className="bg-surface-container border border-outline-variant/30 text-on-surface rounded p-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm"
+                  />
+                </div>
+                
+                <div className="flex gap-2">
+                  <button 
+                    type="button"
+                    onClick={() => setBypassEmail('a90685766@gmail.com')}
+                    className="flex-1 py-1 px-2 rounded bg-primary/10 hover:bg-primary/20 border border-primary/20 text-primary text-[9px] font-label-caps text-center transition-all"
+                  >
+                    Set Admin Email
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setBypassEmail('user@roadrescue.com')}
+                    className="flex-1 py-1 px-2 rounded bg-secondary/10 hover:bg-secondary/20 border border-secondary/20 text-secondary text-[9px] font-label-caps text-center transition-all"
+                  >
+                    Set User Email
+                  </button>
+                </div>
+
+                <div className="flex gap-3 mt-2">
+                  <button 
+                    type="button"
+                    onClick={() => setIsBypassMode(false)}
+                    className="flex-1 py-2 rounded border border-outline-variant/30 text-[10px] font-label-caps font-bold text-on-surface-variant hover:text-on-surface text-center transition-all"
+                  >
+                    Back
+                  </button>
+                  <button 
+                    type="submit"
+                    disabled={loadingBypass}
+                    className="flex-1 py-2 bg-gradient-to-r from-primary-container to-primary text-on-primary-container font-label-caps text-[10px] font-bold rounded shadow-[0_0_15px_rgba(0,242,255,0.2)] hover:shadow-[0_0_20px_rgba(0,242,255,0.4)] transition-all flex items-center justify-center"
+                  >
+                    {loadingBypass ? 'Connecting...' : 'Bypass Auth'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+
+          <div className="font-label-caps text-[9px] text-on-surface-variant/40 tracking-wider">
+            SECURE HANDSHAKE NODE • CP-DELHI-402
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-on-surface font-body-lg flex flex-col relative antialiased selection:bg-primary-container selection:text-on-primary-container">
@@ -541,6 +811,7 @@ export default function App() {
             setPage={setCurrentPage} 
             currentUser={currentUser}
             switchAccount={switchAccount}
+            handleLogout={handleLogout}
           />
           
           {/* Mobile Dashboard/Admin Drawer Toggle Overlay */}
@@ -670,6 +941,7 @@ export default function App() {
             setPage={setCurrentPage} 
             currentUser={currentUser}
             switchAccount={switchAccount}
+            handleLogout={handleLogout}
           />
         )}
 

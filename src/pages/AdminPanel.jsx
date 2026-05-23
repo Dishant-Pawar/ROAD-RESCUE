@@ -1,9 +1,8 @@
 import React from 'react';
 import L from 'leaflet';
-import { getAdminStatsApi } from '../utils/api';
+import { getAdminStatsApi, getMechanicsApi } from '../utils/api';
 
 export default function AdminPanel({ 
-  setPage, 
   adminIncidents, 
   assignIncident, 
   completeIncident, 
@@ -13,6 +12,10 @@ export default function AdminPanel({
   const mapContainerRef = React.useRef(null);
   const mapRef = React.useRef(null);
   const markersRef = React.useRef([]);
+
+  const [mechanics, setMechanics] = React.useState([]);
+  const [selectedTicketId, setSelectedTicketId] = React.useState(null);
+  const [isDispatcherOpen, setIsDispatcherOpen] = React.useState(false);
 
   const [stats, setStats] = React.useState({
     activeRescues: 0,
@@ -43,15 +46,33 @@ export default function AdminPanel({
     fetchStats();
   }, [adminIncidents]);
 
+  React.useEffect(() => {
+    const fetchMechanics = async () => {
+      try {
+        const res = await getMechanicsApi();
+        if (res && res.success && res.data) {
+          setMechanics(res.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch active mechanics:", err);
+      }
+    };
+    
+    if (isDispatcherOpen) {
+      fetchMechanics();
+    }
+  }, [isDispatcherOpen]);
+
   // Bind React's assignIncident callback to window for Leaflet raw HTML popup callbacks
   React.useEffect(() => {
     window.assignIncident = (id) => {
-      assignIncident(id);
+      setSelectedTicketId(id);
+      setIsDispatcherOpen(true);
     };
     return () => {
       delete window.assignIncident;
     };
-  }, [assignIncident]);
+  }, []);
 
   React.useEffect(() => {
     if (!mapContainerRef.current) return;
@@ -118,7 +139,6 @@ export default function AdminPanel({
       
       // Determine which icon to use
       const isAssigned = ticket.status === 'Assigned';
-      const icon = isAssigned ? vehicleIcon : incidentIcon;
       
       // Setup detailed popup text with premium styled cards
       const statusLabel = isAssigned 
@@ -156,11 +176,38 @@ export default function AdminPanel({
         </div>
       `;
       
-      const marker = L.marker([lat, lng], { icon })
-        .bindPopup(popupHtml)
-        .addTo(map);
+      if (isAssigned) {
+        // Render BOTH the breakdown location ( pulsing orange ) and the utility vehicle ( glowing cyan )
+        const driverLat = ticket.driverLocation?.lat || 28.6304;
+        const driverLng = ticket.driverLocation?.lng || 77.2177;
         
-      markersRef.current.push(marker);
+        bounds.push([driverLat, driverLng]);
+        
+        const breakdownMarker = L.marker([lat, lng], { icon: incidentIcon })
+          .bindPopup(popupHtml)
+          .addTo(map);
+        markersRef.current.push(breakdownMarker);
+        
+        const towTruckMarker = L.marker([driverLat, driverLng], { icon: vehicleIcon })
+          .bindPopup(`<div class="text-white font-semibold text-xs py-1">Unit #${ticket.vehicle || 'Tow Truck'} (${ticket.driverName || 'David R.'}) is en route to Ticket #${ticket.ticketId || ticket.id}.</div>`)
+          .addTo(map);
+        markersRef.current.push(towTruckMarker);
+        
+        const routeLine = L.polyline([[driverLat, driverLng], [lat, lng]], {
+          color: '#00f2ff',
+          weight: 3,
+          opacity: 0.6,
+          dashArray: '8, 8',
+          lineCap: 'round'
+        }).addTo(map);
+        markersRef.current.push(routeLine);
+      } else {
+        // Only render the breakdown incident icon
+        const breakdownMarker = L.marker([lat, lng], { icon: incidentIcon })
+          .bindPopup(popupHtml)
+          .addTo(map);
+        markersRef.current.push(breakdownMarker);
+      }
     });
     
     // Fit map to markers bounds if there are any
@@ -388,7 +435,10 @@ export default function AdminPanel({
                           Cancel
                         </button>
                         <button 
-                          onClick={() => assignIncident(ticket.id)}
+                          onClick={() => {
+                            setSelectedTicketId(ticket.id);
+                            setIsDispatcherOpen(true);
+                          }}
                           className="bg-secondary/20 text-secondary border border-secondary/30 px-3 py-1 rounded font-label-caps text-[9px] hover:bg-secondary hover:text-on-secondary transition-all font-bold animate-bounce"
                         >
                           Assign
@@ -521,6 +571,116 @@ export default function AdminPanel({
           }
         }
       `}</style>
+
+      {/* Tactical Dispatcher Modal */}
+      {isDispatcherOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
+          <div className="glass-panel max-w-lg w-full rounded-2xl p-6 relative overflow-hidden border-primary/20 shadow-2xl flex flex-col gap-5 bg-[#161616]">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-secondary via-primary to-secondary"></div>
+            
+            {/* Header */}
+            <div className="flex justify-between items-start">
+              <div>
+                <h2 className="text-xl font-headline-lg gradient-text font-bold tracking-wide flex items-center gap-2 text-white">
+                  <span className="material-symbols-outlined text-secondary animate-pulse">radar</span>
+                  Tactical Dispatch Center
+                </h2>
+                <p className="font-body-sm text-[11px] text-on-surface-variant/80 uppercase tracking-wider mt-0.5">
+                  Select available roadside unit for Ticket #{selectedTicketId}
+                </p>
+              </div>
+              <button 
+                onClick={() => setIsDispatcherOpen(false)}
+                className="text-on-surface-variant/60 hover:text-on-surface transition-colors p-1"
+              >
+                <span className="material-symbols-outlined text-white">close</span>
+              </button>
+            </div>
+
+            {/* Mechanics List */}
+            <div className="flex flex-col gap-3 max-h-[350px] overflow-y-auto pr-1">
+              {mechanics.length === 0 ? (
+                <div className="py-8 text-center text-on-surface-variant/60 font-body-sm">
+                  Scanning local tracking frequencies... No active fleet units found.
+                </div>
+              ) : (
+                mechanics.map((mech) => {
+                  const isDavid = mech.name.includes('David');
+                  const etaText = isDavid ? '12 mins' : '5 mins';
+                  const isBusy = mech.isBusy;
+                  return (
+                    <div 
+                      key={mech._id} 
+                      className={`glass-panel bg-surface-container-low/20 hover:bg-surface-variant/20 p-4 rounded-xl border border-outline-variant/15 flex items-center justify-between gap-4 transition-all duration-300 group ${isBusy ? 'opacity-80' : ''}`}
+                    >
+                      <div className="flex items-center gap-3.5">
+                        <div className="relative">
+                          <img 
+                            src={mech.avatar || "https://lh3.googleusercontent.com/aida-public/AB6AXuDQvr_HDAe8dIuPOCeH_hCSd8oy2NmxlGvMzAXNKZDtXqxmAQgsaGSbBp5nFz1F94bhRK9iZRp1PDfy-7_3e-n4HIisgKFOcvr6pG4Cv4oPIneIbmFH9Sqz2u75z1w8iPk2Z5oty9UnXzkmiSdHTB3bl_fJa8WUNPXSIxYtC-S6m6-wYXVBvz6dJYp08B6AZbwAhF4TX5NrkjgjyvQvPkZQY-4drXs-3zXAg-CXmBGaSn1SE_x-a1PCjSgYqcK0sA0xhEeAkhUcRX4"} 
+                            alt={mech.name}
+                            className="w-12 h-12 rounded-full object-cover border border-primary/20 group-hover:border-primary/50 transition-colors"
+                          />
+                          <span className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-[#131313] ${isBusy ? 'bg-red-500 animate-pulse' : 'bg-emerald-500 animate-pulse'}`}></span>
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-on-surface text-sm flex items-center gap-1.5 text-white">
+                            {mech.name}
+                            <span className="text-[9px] bg-primary/10 border border-primary/20 text-primary px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">
+                              ★ {mech.rating || '5.0'}
+                            </span>
+                            {isBusy ? (
+                              <span className="text-[8px] bg-red-500/10 border border-red-500/30 text-red-500 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider animate-pulse">
+                                ON DUTY
+                              </span>
+                            ) : (
+                              <span className="text-[8px] bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">
+                                AVAILABLE
+                              </span>
+                            )}
+                          </h4>
+                          <p className="font-body-sm text-[10px] text-on-surface-variant/80 font-medium">{mech.specialty}</p>
+                          <p className="font-body-sm text-[10px] text-on-surface-variant/50 mt-0.5">
+                            {mech.vehicle?.name || 'Heavy Tow • Unit #402'} • {mech.vehicle?.plate || 'RD-RESC-9'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1.5">
+                        <span className="text-[10px] font-label-caps text-secondary font-bold tracking-wide">
+                          ETA {etaText}
+                        </span>
+                        <button
+                          disabled={isBusy}
+                          onClick={() => {
+                            assignIncident(selectedTicketId, mech._id);
+                            setIsDispatcherOpen(false);
+                          }}
+                          className={`px-3.5 py-1.5 rounded-lg font-label-caps text-[10px] font-bold transition-all ${
+                            isBusy
+                              ? 'bg-neutral-800 text-neutral-500 border border-neutral-700 cursor-not-allowed opacity-50'
+                              : 'bg-secondary/20 text-secondary hover:bg-secondary border border-secondary/30 hover:text-white hover:shadow-[0_0_15px_rgba(255,138,0,0.4)] cursor-pointer'
+                          }`}
+                        >
+                          {isBusy ? 'ON DUTY' : 'DISPATCH UNIT'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            
+            {/* Footer */}
+            <div className="border-t border-outline-variant/15 pt-3.5 flex justify-end">
+              <button 
+                onClick={() => setIsDispatcherOpen(false)}
+                className="glass-panel text-on-surface hover:bg-surface-variant px-4 py-2 rounded-lg font-label-caps text-[10px] font-bold transition-all text-xs text-white border border-outline-variant/30 cursor-pointer"
+              >
+                Close Console
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

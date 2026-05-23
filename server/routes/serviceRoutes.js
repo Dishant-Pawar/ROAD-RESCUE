@@ -10,13 +10,15 @@ import {
   submitEmergencyReport,
   getEmergencyReports,
   getAdminStats,
-  getClientStats
+  getClientStats,
+  getMechanics
 } from '../controllers/serviceController.js';
 import { protect, optionalProtect, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
 
 router.get('/incidents', protect, authorize('admin'), getRequests);
+router.get('/mechanics', protect, authorize('admin'), getMechanics);
 router.get('/incidents/active', protect, getActiveRequest);
 router.post('/incidents', protect, createRequest);
 router.put('/incidents/:id/assign', protect, authorize('admin'), assignRequest);
