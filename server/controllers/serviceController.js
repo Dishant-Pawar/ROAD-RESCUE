@@ -57,8 +57,11 @@ export const createRequest = async (req, res, next) => {
     const ticketId = `RR-${Math.floor(Math.random() * 9000) + 1000}`;
 
     // Use actual client coordinates if provided, otherwise randomize around Connaught Place, India (28.6304, 77.2177)
-    const randomLat = latitude || (28.6304 + (Math.random() - 0.5) * 0.04);
-    const randomLng = longitude || (77.2177 + (Math.random() - 0.5) * 0.04);
+    const isRealLat = (latitude !== undefined && latitude !== null && !isNaN(Number(latitude)));
+    const isRealLng = (longitude !== undefined && longitude !== null && !isNaN(Number(longitude)));
+
+    const randomLat = isRealLat ? Number(latitude) : (28.6304 + (Math.random() - 0.5) * 0.04);
+    const randomLng = isRealLng ? Number(longitude) : (77.2177 + (Math.random() - 0.5) * 0.04);
 
     let customerVehicleStr = 'Tesla Model S Plaid';
     if (req.user) {
@@ -386,8 +389,8 @@ export const submitEmergencyReport = async (req, res, next) => {
       issue,
       location: {
         address,
-        lat: lat || 28.6304,
-        lng: lng || 77.2177
+        lat: (lat !== undefined && lat !== null && !isNaN(Number(lat))) ? Number(lat) : 28.6304,
+        lng: (lng !== undefined && lng !== null && !isNaN(Number(lng))) ? Number(lng) : 77.2177
       },
       contactPhone: phone || req.user?.phone || '+1 (555) 000-0000',
       severity: severity || 'Medium',

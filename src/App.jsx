@@ -471,23 +471,65 @@ export default function App() {
       }
     };
 
+    const getRealAddressAndDispatch = async (lat, lng) => {
+      let address = `Location: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`, {
+          headers: {
+            'Accept-Language': 'en'
+          }
+        });
+        if (response.ok) {
+          const addrData = await response.json();
+          if (addrData && addrData.display_name) {
+            address = addrData.display_name;
+          }
+        }
+      } catch (err) {
+        console.warn("⚠️ OpenStreetMap Nominatim geocoding lookup failed:", err);
+      }
+      dispatchSos(lat, lng, address);
+    };
+
+    const fetchIpLocationFallback = () => {
+      console.log("ℹ️ Fetching real location fallback via IP Geolocation API...");
+      fetch('https://ipapi.co/json/')
+        .then(res => {
+          if (!res.ok) throw new Error("IP Geolocation API network response failed");
+          return res.json();
+        })
+        .then(data => {
+          if (data && typeof data.latitude === 'number' && typeof data.longitude === 'number') {
+            const label = data.city ? `${data.city}, ${data.region || data.country_name} (IP Location)` : 'Real IP-based Location';
+            console.log(`📍 Acquired IP Geolocation: ${data.latitude}, ${data.longitude} (${label})`);
+            dispatchSos(data.latitude, data.longitude, label);
+          } else {
+            throw new Error("Invalid IP Location data structure");
+          }
+        })
+        .catch(ipErr => {
+          console.error("❌ IP Geolocation API also failed:", ipErr);
+          dispatchSos(null, null, 'Sector 4 - Downtown Grid');
+        });
+    };
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
-          console.log(`📍 Acquired Geolocation: ${lat}, ${lng}`);
-          dispatchSos(lat, lng, 'Current Location (Broadcast Frequency)');
+          console.log(`📍 Acquired browser high-accuracy Geolocation: ${lat}, ${lng}`);
+          getRealAddressAndDispatch(lat, lng);
         },
         (error) => {
-          console.warn("⚠️ Geolocation blocked or failed. Using randomized Connaught Place coordinates:", error);
-          dispatchSos(null, null, 'Sector 4 - Downtown Grid');
+          console.warn("⚠️ Browser Geolocation blocked or failed. Using IP location fallback:", error);
+          fetchIpLocationFallback();
         },
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
       );
     } else {
-      console.warn("⚠️ Browser does not support geolocation. Using default grid.");
-      dispatchSos(null, null, 'Sector 4 - Downtown Grid');
+      console.warn("⚠️ Browser does not support geolocation. Using IP location fallback.");
+      fetchIpLocationFallback();
     }
   };
 
