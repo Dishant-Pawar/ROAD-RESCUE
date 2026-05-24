@@ -177,7 +177,8 @@ export default function App() {
       }
     } catch (err) {
       console.error("Google Sign-In backend verification failed:", err);
-      triggerToast("❌ Google Verification failed. Access Denied.", "error");
+      const serverMsg = err.response?.data?.message || err.message || "Network error: check if backend is online.";
+      triggerToast(`❌ Google Verification failed: ${serverMsg}`, "error");
     }
   };
 
@@ -214,7 +215,8 @@ export default function App() {
       }
     } catch (err) {
       console.error("Sandbox authentication failed:", err);
-      triggerToast("❌ Sandbox Connection failed.", "error");
+      const serverMsg = err.response?.data?.message || err.message || "Network error: check if backend is online.";
+      triggerToast(`❌ Sandbox Connection failed: ${serverMsg}`, "error");
     } finally {
       setLoadingBypass(false);
     }
