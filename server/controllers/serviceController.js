@@ -138,9 +138,9 @@ export const assignRequest = async (req, res, next) => {
     if (!mechanic) {
       // Find active mechanics who are not currently busy
       const busyMechanicIds = await ServiceRequest.find({ status: 'Assigned' }).distinct('mechanic');
-      mechanic = await Mechanic.findOne({ status: 'active', _id: { $nin: busyMechanicIds } });
+      mechanic = await Mechanic.findOne({ status: 'active', isApproved: true, _id: { $nin: busyMechanicIds } });
       if (!mechanic) {
-        mechanic = await Mechanic.findOne({ status: 'active' });
+        mechanic = await Mechanic.findOne({ status: 'active', isApproved: true });
       }
     }
 
@@ -562,7 +562,7 @@ export const getClientStats = async (req, res, next) => {
 // @access  Private/Admin
 export const getMechanics = async (req, res, next) => {
   try {
-    const filter = req.userRole === 'admin' ? {} : { status: 'active' };
+    const filter = (req.user && req.user.role === 'admin') ? {} : { status: 'active', isApproved: true };
     const mechanics = await Mechanic.find(filter);
     
     // Find mechanics who currently have an active assigned request

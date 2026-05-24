@@ -39,6 +39,18 @@ const mechanicSchema = new mongoose.Schema({
     enum: ['active', 'inactive'],
     default: 'active',
   },
+  isApproved: {
+    type: Boolean,
+    default: false,
+  },
+  city: {
+    type: String,
+    default: '',
+  },
+  drivingLicense: {
+    type: String,
+    default: '',
+  },
   specialty: {
     type: String,
     default: 'General Assistance', // e.g. Towing, Battery, Engine Diagnostics

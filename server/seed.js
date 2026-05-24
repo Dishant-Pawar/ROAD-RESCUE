@@ -276,7 +276,8 @@ const seedData = async () => {
     ]);
     const mechanic1 = mechanicsList[0];
     const mechanic2 = mechanicsList[1];
-    console.log(`✅ Created 10 Mechanics including ${mechanic1.name} and ${mechanic2.name}`);
+    await Mechanic.updateMany({}, { isApproved: true });
+    console.log(`✅ Created and approved 10 Mechanics including ${mechanic1.name} and ${mechanic2.name}`);
 
     // 5. Create ServiceRequests (Active and past ones)
     console.log('🌱 Seeding Service Requests...');

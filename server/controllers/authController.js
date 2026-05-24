@@ -446,6 +446,7 @@ export const createDriver = async (req, res, next) => {
         name: vehicleName || 'Heavy Tow • Unit #402',
         plate: vehiclePlate || 'RD-RESC-9',
       },
+      isApproved: true,
     });
 
     res.status(201).json({
@@ -498,6 +499,77 @@ export const updateDriver = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: 'Driver unit profile updated successfully.',
+      data: mechanic
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Register a driver / mechanic (Public application, pending admin approval)
+// @route   POST /api/auth/register-driver-public
+// @access  Public
+export const registerDriverPublic = async (req, res, next) => {
+  try {
+    const { name, email, password, phone, address, city, drivingLicense } = req.body;
+
+    if (!name || !email || !password || !phone || !address || !city || !drivingLicense) {
+      return res.status(400).json({ success: false, message: 'Please provide all required fields' });
+    }
+
+    const exists = await Mechanic.findOne({ email });
+    if (exists) {
+      return res.status(400).json({ success: false, message: 'Driver already exists with this email' });
+    }
+
+    const mechanic = await Mechanic.create({
+      name,
+      email,
+      password,
+      phone,
+      isApproved: false, // Must be approved by admin
+      specialty: 'General Assistance',
+      vehicle: {
+        name: 'Pending Assignment',
+        plate: 'PENDING'
+      },
+      location: {
+        address,
+        lat: 28.6304,
+        lng: 77.2177
+      },
+      city,
+      drivingLicense,
+      status: 'inactive' // offline by default
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Application submitted successfully! Awaiting administrator approval.',
+      data: mechanic
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Approve a driver / mechanic application (Admin only)
+// @route   PUT /api/auth/drivers/:id/approve
+// @access  Private/Admin
+export const approveDriver = async (req, res, next) => {
+  try {
+    const mechanic = await Mechanic.findById(req.params.id);
+    if (!mechanic) {
+      return res.status(404).json({ success: false, message: 'Driver not found' });
+    }
+
+    mechanic.isApproved = true;
+    mechanic.status = 'active'; // Activate the driver
+    await mechanic.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Driver application approved successfully!',
       data: mechanic
     });
   } catch (error) {

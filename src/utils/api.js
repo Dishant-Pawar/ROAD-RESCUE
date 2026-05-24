@@ -210,6 +210,16 @@ export const deleteDriverApi = async (id) => {
   return res.data;
 };
 
+export const registerDriverPublicApi = async (driverData) => {
+  const res = await api.post('/api/auth/register-driver-public', driverData);
+  return res.data;
+};
+
+export const approveDriverApi = async (id) => {
+  const res = await api.put(`/api/auth/drivers/${id}/approve`);
+  return res.data;
+};
+
 export const purgeSystemDataApi = async () => {
   const res = await api.delete('/api/auth/system/purge');
   return res.data;

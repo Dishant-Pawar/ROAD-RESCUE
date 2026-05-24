@@ -15,7 +15,9 @@ import {
   createDriver,
   updateDriver,
   deleteDriver,
-  purgeSystemData
+  purgeSystemData,
+  registerDriverPublic,
+  approveDriver
 } from '../controllers/authController.js';
 import { protect, authorize } from '../middleware/auth.js';
 
@@ -28,6 +30,7 @@ router.post('/login-mechanic', loginMechanic);
 router.post('/register-admin', registerAdmin);
 router.post('/login-admin', loginAdmin);
 router.post('/google-login', googleLogin);
+router.post('/register-driver-public', registerDriverPublic);
 router.get('/me', protect, getMe);
 router.put('/update-profile', protect, updateProfile);
 
@@ -37,6 +40,7 @@ router.put('/users/:id/block', protect, authorize('admin'), toggleBlockUser);
 router.delete('/users/:id', protect, authorize('admin'), deleteUser);
 router.post('/drivers', protect, authorize('admin'), createDriver);
 router.put('/drivers/:id', protect, authorize('admin'), updateDriver);
+router.put('/drivers/:id/approve', protect, authorize('admin'), approveDriver);
 router.delete('/drivers/:id', protect, authorize('admin'), deleteDriver);
 router.delete('/system/purge', protect, authorize('admin'), purgeSystemData);
 

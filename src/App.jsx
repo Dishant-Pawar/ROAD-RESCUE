@@ -17,7 +17,8 @@ import {
   getPaymentsApi,
   getVehiclesApi,
   getNotificationsApi,
-  googleLoginApi
+  googleLoginApi,
+  registerDriverPublicApi
 } from './utils/api';
 
 // Pages
@@ -37,6 +38,17 @@ export default function App() {
   const [isBypassMode, setIsBypassMode] = useState(false);
   const [bypassEmail, setBypassEmail] = useState('');
   const [loadingBypass, setLoadingBypass] = useState(false);
+  const [isPublicDriverModalOpen, setIsPublicDriverModalOpen] = useState(false);
+
+  // Public Driver Application Form states
+  const [pubDriverName, setPubDriverName] = useState('');
+  const [pubDriverEmail, setPubDriverEmail] = useState('');
+  const [pubDriverPassword, setPubDriverPassword] = useState('');
+  const [pubDriverPhone, setPubDriverPhone] = useState('');
+  const [pubDriverAddress, setPubDriverAddress] = useState('');
+  const [pubDriverCity, setPubDriverCity] = useState('');
+  const [pubDriverLicense, setPubDriverLicense] = useState('');
+  const [pubSubmitLoading, setPubSubmitLoading] = useState(false);
 
   // Synchronized System States
   const [activeIncident, setActiveIncident] = useState(null);
@@ -252,6 +264,46 @@ export default function App() {
     setActiveIncident(null);
     setCurrentPage('home');
     triggerToast('🚪 Logged out successfully. Terminal secure.', 'info');
+  };
+
+  const handlePubDriverSubmit = async (e) => {
+    e.preventDefault();
+    if (!pubDriverName || !pubDriverEmail || !pubDriverPhone || !pubDriverPassword || !pubDriverAddress || !pubDriverCity || !pubDriverLicense) {
+      triggerToast("⚠️ All fields are required to secure grid registration.", "warning");
+      return;
+    }
+
+    setPubSubmitLoading(true);
+    try {
+      const res = await registerDriverPublicApi({
+        name: pubDriverName,
+        email: pubDriverEmail,
+        password: pubDriverPassword,
+        phone: pubDriverPhone,
+        address: pubDriverAddress,
+        city: pubDriverCity,
+        drivingLicense: pubDriverLicense
+      });
+
+      if (res && res.success) {
+        triggerToast("💚 Application Submitted! Operational operators will review your credentials shortly.", "success");
+        // Reset fields
+        setPubDriverName('');
+        setPubDriverEmail('');
+        setPubDriverPassword('');
+        setPubDriverPhone('');
+        setPubDriverAddress('');
+        setPubDriverCity('');
+        setPubDriverLicense('');
+        setIsPublicDriverModalOpen(false);
+      }
+    } catch (err) {
+      console.error("Public driver application failed:", err);
+      const errMsg = err.response?.data?.message || err.message || "Failed to submit application.";
+      triggerToast(`❌ Application Failed: ${errMsg}`, "error");
+    } finally {
+      setPubSubmitLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -789,6 +841,14 @@ export default function App() {
                   <span className="material-symbols-outlined text-[16px]">terminal</span>
                   Developer Sandbox Bypass
                 </button>
+
+                <button 
+                  onClick={() => setIsPublicDriverModalOpen(true)}
+                  className="py-2.5 px-4 rounded border border-outline-variant/30 hover:border-secondary/50 bg-surface-container-high/40 hover:bg-surface-variant/40 text-secondary font-label-caps text-[10px] tracking-widest font-bold uppercase transition-all flex items-center justify-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-[16px]">local_shipping</span>
+                  Apply to Become a Driver
+                </button>
               </div>
             ) : (
               <form onSubmit={handleBypassLogin} className="flex flex-col gap-4 w-full text-left">
@@ -844,6 +904,159 @@ export default function App() {
           <div className="font-label-caps text-[9px] text-on-surface-variant/40 tracking-wider">
             SECURE HANDSHAKE NODE • CP-DELHI-402
           </div>
+          
+          {isPublicDriverModalOpen && (
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
+              <div className="glass-panel max-w-lg w-full rounded-2xl p-6 relative overflow-hidden border-primary/20 shadow-2xl flex flex-col gap-5 bg-[#161616]">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-secondary via-primary to-secondary"></div>
+                
+                {/* Header */}
+                <div className="flex justify-between items-start text-left">
+                  <div>
+                    <h2 className="text-xl font-headline-lg gradient-text font-bold tracking-wide flex items-center gap-2 text-white">
+                      <span className="material-symbols-outlined text-secondary animate-pulse">local_shipping</span>
+                      Apply to Join Specialist Fleet
+                    </h2>
+                    <p className="font-body-sm text-[11px] text-on-surface-variant/80 uppercase tracking-wider mt-0.5">
+                      Provisioning new active rescue response credentials
+                    </p>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => setIsPublicDriverModalOpen(false)}
+                    className="text-on-surface-variant/60 hover:text-on-surface transition-colors p-1"
+                  >
+                    <span className="material-symbols-outlined text-white">close</span>
+                  </button>
+                </div>
+
+                {/* Form */}
+                <form onSubmit={handlePubDriverSubmit} className="flex flex-col gap-4 overflow-y-auto max-h-[450px] pr-1 custom-scrollbar text-left">
+                  
+                  {/* Name */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-label-caps font-bold tracking-widest text-on-surface-variant">Full Legal Name</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={pubDriverName}
+                      onChange={(e) => setPubDriverName(e.target.value)}
+                      placeholder="e.g. Marcus Vance"
+                      className="bg-surface-container border border-outline-variant/30 text-on-surface rounded p-2.5 focus:outline-none focus:ring-1 focus:ring-primary text-xs text-white"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Email */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-label-caps font-bold tracking-widest text-on-surface-variant">Roster Login Email</label>
+                      <input 
+                        type="email" 
+                        required
+                        value={pubDriverEmail}
+                        onChange={(e) => setPubDriverEmail(e.target.value)}
+                        placeholder="e.g. mvance@roadrescue.com"
+                        className="bg-surface-container border border-outline-variant/30 text-on-surface rounded p-2.5 focus:outline-none focus:ring-1 focus:ring-primary text-xs text-white"
+                      />
+                    </div>
+
+                    {/* Phone */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-label-caps font-bold tracking-widest text-on-surface-variant">Contact Phone</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={pubDriverPhone}
+                        onChange={(e) => setPubDriverPhone(e.target.value)}
+                        placeholder="e.g. +1 (555) 242-2550"
+                        className="bg-surface-container border border-outline-variant/30 text-on-surface rounded p-2.5 focus:outline-none focus:ring-1 focus:ring-primary text-xs text-white"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Password */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-label-caps font-bold tracking-widest text-on-surface-variant">Secure Roster Password</label>
+                    <input 
+                      type="password" 
+                      required
+                      value={pubDriverPassword}
+                      onChange={(e) => setPubDriverPassword(e.target.value)}
+                      placeholder="Min 6 characters..."
+                      className="bg-surface-container border border-outline-variant/30 text-on-surface rounded p-2.5 focus:outline-none focus:ring-1 focus:ring-primary text-xs text-white"
+                    />
+                  </div>
+
+                  {/* Address & City */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-label-caps font-bold tracking-widest text-on-surface-variant">Sector Location Address</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={pubDriverAddress}
+                        onChange={(e) => setPubDriverAddress(e.target.value)}
+                        placeholder="e.g. Downtown Sector 4"
+                        className="bg-surface-container border border-outline-variant/30 text-on-surface rounded p-2.5 focus:outline-none focus:ring-1 focus:ring-primary text-xs text-white"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] font-label-caps font-bold tracking-widest text-on-surface-variant">Base Operation City</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={pubDriverCity}
+                        onChange={(e) => setPubDriverCity(e.target.value)}
+                        placeholder="e.g. Seattle"
+                        className="bg-surface-container border border-outline-variant/30 text-on-surface rounded p-2.5 focus:outline-none focus:ring-1 focus:ring-primary text-xs text-white"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Driving License */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-label-caps font-bold tracking-widest text-on-surface-variant">Driving License Number</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={pubDriverLicense}
+                      onChange={(e) => setPubDriverLicense(e.target.value)}
+                      placeholder="e.g. DL-983726A"
+                      className="bg-surface-container border border-outline-variant/30 text-on-surface rounded p-2.5 focus:outline-none focus:ring-1 focus:ring-primary text-xs text-white"
+                    />
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex justify-end gap-3 mt-2 border-t border-outline-variant/15 pt-4">
+                    <button 
+                      type="button"
+                      onClick={() => setIsPublicDriverModalOpen(false)}
+                      className="glass-panel text-on-surface hover:bg-surface-variant px-4 py-2 rounded-lg font-label-caps text-[10px] font-bold transition-all text-white border border-outline-variant/30 cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={pubSubmitLoading}
+                      className="px-4 py-2 rounded bg-gradient-to-r from-secondary to-primary text-white font-label-caps text-[10px] font-bold tracking-wider hover:shadow-[0_0_15px_rgba(0,242,255,0.4)] transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      {pubSubmitLoading ? (
+                        <>
+                          <span className="material-symbols-outlined text-[14px] animate-spin">cached</span>
+                          Transmitting...
+                        </>
+                      ) : (
+                        <>
+                          <span className="material-symbols-outlined text-[14px]">save</span>
+                          Submit Application
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );

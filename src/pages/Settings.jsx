@@ -8,7 +8,9 @@ import {
   purgeSystemDataApi,
   getMechanicsApi,
   addDriverApi,
-  updateDriverApi
+  updateDriverApi,
+  registerDriverPublicApi,
+  approveDriverApi
 } from '../utils/api';
 
 export default function Settings({ currentUser, setCurrentUser, triggerToast, setPage }) {
@@ -40,6 +42,16 @@ export default function Settings({ currentUser, setCurrentUser, triggerToast, se
   const [driverAvatar, setDriverAvatar] = useState('');
   const [driverStatus, setDriverStatus] = useState('active');
   const [driverSubmitLoading, setDriverSubmitLoading] = useState(false);
+
+  // Standard user applying as driver form states
+  const [appDriverName, setAppDriverName] = useState(currentUser?.name || '');
+  const [appDriverPhone, setAppDriverPhone] = useState(currentUser?.phone || '');
+  const [appDriverEmail, setAppDriverEmail] = useState(currentUser?.email || '');
+  const [appDriverPassword, setAppDriverPassword] = useState('');
+  const [appDriverAddress, setAppDriverAddress] = useState('');
+  const [appDriverCity, setAppDriverCity] = useState('');
+  const [appDriverLicense, setAppDriverLicense] = useState('');
+  const [appSubmitLoading, setAppSubmitLoading] = useState(false);
 
   // Preset Premium Avatars to give the user excellent high-end graphics presets out of the box
   const avatarPresets = [
@@ -256,6 +268,56 @@ export default function Settings({ currentUser, setCurrentUser, triggerToast, se
     }
   };
 
+  const handleApplyDriverSubmit = async (e) => {
+    e.preventDefault();
+    if (!appDriverName || !appDriverEmail || !appDriverPhone || !appDriverPassword || !appDriverAddress || !appDriverCity || !appDriverLicense) {
+      triggerToast("⚠️ All fields are required to secure grid registration.", "warning");
+      return;
+    }
+
+    setAppSubmitLoading(true);
+    try {
+      const res = await registerDriverPublicApi({
+        name: appDriverName,
+        email: appDriverEmail,
+        password: appDriverPassword,
+        phone: appDriverPhone,
+        address: appDriverAddress,
+        city: appDriverCity,
+        drivingLicense: appDriverLicense
+      });
+
+      if (res && res.success) {
+        triggerToast("💚 Application Submitted! Operational operators will review your credentials shortly.", "success");
+        // Reset fields
+        setAppDriverPassword('');
+        setAppDriverAddress('');
+        setAppDriverCity('');
+        setAppDriverLicense('');
+        setActiveSubTab('profile');
+      }
+    } catch (err) {
+      console.error("Driver application failed:", err);
+      const errMsg = err.response?.data?.message || err.message || "Failed to submit application.";
+      triggerToast(`❌ Application Failed: ${errMsg}`, "error");
+    } finally {
+      setAppSubmitLoading(false);
+    }
+  };
+
+  const handleApproveDriver = async (driverId) => {
+    try {
+      const res = await approveDriverApi(driverId);
+      if (res && res.success) {
+        triggerToast("💚 Driver unit profile successfully approved and rostered!", "success");
+        await fetchAdminData();
+      }
+    } catch (err) {
+      console.error("Driver approval failed:", err);
+      triggerToast("❌ Failed to approve driver application.", "error");
+    }
+  };
+
   const handlePurgeSystemData = async () => {
     const confirmation = window.prompt("🚨 HIGH-STAKES SECURITY PURGE OVERRIDE 🚨\n\nThis action will completely delete all operations history, completed rescue tickets, invoice ledgers, system alerts, and satellite reports from the database.\n\nType 'PURGE ALL HISTORY' below to confirm this command:");
     if (confirmation !== 'PURGE ALL HISTORY') {
@@ -341,6 +403,20 @@ export default function Settings({ currentUser, setCurrentUser, triggerToast, se
             >
               <span className="material-symbols-outlined text-[18px]">admin_panel_settings</span>
               System Overrides
+            </button>
+          )}
+
+          {!isAdmin && (
+            <button
+              onClick={() => setActiveSubTab('apply-driver')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg font-label-caps text-xs tracking-wider text-left transition-all ${
+                activeSubTab === 'apply-driver'
+                  ? 'bg-primary-container/10 text-primary font-bold border-l-4 border-primary'
+                  : 'text-on-surface-variant hover:bg-surface-variant/20 hover:text-primary'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[18px]">local_shipping</span>
+              Become a Specialist
             </button>
           )}
         </div>
@@ -454,6 +530,130 @@ export default function Settings({ currentUser, setCurrentUser, triggerToast, se
 
               </form>
             </div>
+          ) : activeSubTab === 'apply-driver' ? (
+            <div className="flex flex-col gap-6 animate-in fade-in duration-200">
+              <div>
+                <h3 className="text-xl font-title-md font-bold text-on-surface flex items-center gap-2 text-white">
+                  <span className="material-symbols-outlined text-primary">local_shipping</span>
+                  Apply for Specialist Fleet Roster
+                </h3>
+                <p className="text-xs text-on-surface-variant/70 mt-1">
+                  Submit your credentials to apply to become an approved RoadRescue field responder.
+                </p>
+              </div>
+
+              <form onSubmit={handleApplyDriverSubmit} className="flex flex-col gap-4 max-w-xl text-left">
+                {/* Name */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-label-caps font-bold tracking-widest text-on-surface-variant">Full Legal Name</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={appDriverName}
+                    onChange={(e) => setAppDriverName(e.target.value)}
+                    placeholder="Elena Mercer"
+                    className="bg-surface-container border border-outline-variant/30 text-on-surface rounded p-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white"
+                  />
+                </div>
+
+                {/* Email */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-label-caps font-bold tracking-widest text-on-surface-variant">Roster Login Email</label>
+                  <input 
+                    type="email" 
+                    required
+                    value={appDriverEmail}
+                    onChange={(e) => setAppDriverEmail(e.target.value)}
+                    placeholder="elena@example.com"
+                    className="bg-surface-container border border-outline-variant/30 text-on-surface rounded p-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white"
+                  />
+                </div>
+
+                {/* Password */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-label-caps font-bold tracking-widest text-on-surface-variant">Secure Roster Passphrase</label>
+                  <input 
+                    type="password" 
+                    required
+                    value={appDriverPassword}
+                    onChange={(e) => setAppDriverPassword(e.target.value)}
+                    placeholder="Create a strong password..."
+                    className="bg-surface-container border border-outline-variant/30 text-on-surface rounded p-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white"
+                  />
+                </div>
+
+                {/* Phone & License */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-label-caps font-bold tracking-widest text-on-surface-variant">Contact Phone</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={appDriverPhone}
+                      onChange={(e) => setAppDriverPhone(e.target.value)}
+                      placeholder="+1 (555) 242-2550"
+                      className="bg-surface-container border border-outline-variant/30 text-on-surface rounded p-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-label-caps font-bold tracking-widest text-on-surface-variant">Driving License Number</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={appDriverLicense}
+                      onChange={(e) => setAppDriverLicense(e.target.value)}
+                      placeholder="e.g. DL-983726A"
+                      className="bg-surface-container border border-outline-variant/30 text-on-surface rounded p-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Address & City */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-label-caps font-bold tracking-widest text-on-surface-variant">Sector Location Address</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={appDriverAddress}
+                      onChange={(e) => setAppDriverAddress(e.target.value)}
+                      placeholder="e.g. Downtown Sector 4"
+                      className="bg-surface-container border border-outline-variant/30 text-on-surface rounded p-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-label-caps font-bold tracking-widest text-on-surface-variant">Base Operation City</label>
+                    <input 
+                      type="text" 
+                      required
+                      value={appDriverCity}
+                      onChange={(e) => setAppDriverCity(e.target.value)}
+                      placeholder="e.g. Seattle"
+                      className="bg-surface-container border border-outline-variant/30 text-on-surface rounded p-3 focus:outline-none focus:ring-1 focus:ring-primary text-sm text-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Submit button */}
+                <button
+                  type="submit"
+                  disabled={appSubmitLoading}
+                  className="mt-2 py-3 px-6 rounded bg-gradient-to-r from-secondary to-primary text-white font-label-caps text-xs font-bold tracking-wider hover:shadow-[0_0_20px_rgba(0,242,255,0.4)] transition-all flex items-center justify-center gap-2 self-start cursor-pointer disabled:opacity-50"
+                >
+                  {appSubmitLoading ? (
+                    <>
+                      <span className="material-symbols-outlined text-[16px] animate-spin">cached</span>
+                      Transmitting Credentials...
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-[16px]">how_to_reg</span>
+                      Submit Fleet Specialist Application
+                    </>
+                  )}
+                </button>
+              </form>
+            </div>
           ) : activeSubTab === 'security' ? (
             /* Passphrase settings Tab */
             <div className="flex flex-col gap-6 animate-in fade-in duration-200">
@@ -551,12 +751,12 @@ export default function Settings({ currentUser, setCurrentUser, triggerToast, se
                       </button>
                     </div>
                     <div className="flex flex-col gap-2.5 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
-                      {drivers.length === 0 ? (
+                      {drivers.filter(d => d.isApproved !== false).length === 0 ? (
                         <div className="text-xs text-on-surface-variant/50 py-4 bg-surface-container-low/30 rounded-lg p-4 border border-outline-variant/5">
                           No active rescue units registered in the fleet roster.
                         </div>
                       ) : (
-                        drivers.map(driver => (
+                        drivers.filter(d => d.isApproved !== false).map(driver => (
                           <div key={driver._id} className="flex justify-between items-center bg-surface-container-low/30 border border-outline-variant/10 p-3.5 rounded-xl hover:border-outline-variant/30 transition-all gap-4">
                             <div className="flex items-center gap-3.5 min-w-0">
                               <img src={driver.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDQvr_HDAe8dIuPOCeH_hCSd8oy2NmxlGvMzAXNKZDtXqxmAQgsaGSbBp5nFz1F94bhRK9iZRp1PDfy-7_3e-n4HIisgKFOcvr6pG4Cv4oPIneIbmFH9Sqz2u75z1w8iPk2Z5oty9UnXzkmiSdHTB3bl_fJa8WUNPXSIxYtC-S6m6-wYXVBvz6dJYp08B6AZbwAhF4TX5NrkjgjyvQvPkZQY-4drXs-3zXAg-CXmBGaSn1SE_x-a1PCjSgYqcK0sA0xhEeAkhUcRX4'} alt={driver.name} className="w-9 h-9 rounded-full object-cover flex-shrink-0 border border-white/5" />
@@ -597,6 +797,55 @@ export default function Settings({ currentUser, setCurrentUser, triggerToast, se
                               >
                                 <span className="material-symbols-outlined text-[10px] font-bold">delete</span>
                                 Purge
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Pending Driver Applications */}
+                  <div className="flex flex-col gap-3 mt-4">
+                    <div className="flex justify-between items-center mb-1 gap-4">
+                      <h4 className="font-label-caps text-[11px] text-secondary tracking-widest font-bold whitespace-nowrap">⏳ PENDING FLEET APPLICATIONS</h4>
+                    </div>
+                    <div className="flex flex-col gap-2.5 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
+                      {drivers.filter(d => d.isApproved === false).length === 0 ? (
+                        <div className="text-xs text-on-surface-variant/50 py-4 bg-surface-container-low/30 rounded-lg p-4 border border-outline-variant/5">
+                          No pending rescue specialist applications.
+                        </div>
+                      ) : (
+                        drivers.filter(d => d.isApproved === false).map(driver => (
+                          <div key={driver._id} className="flex justify-between items-center bg-surface-container-low/30 border border-outline-variant/10 p-3.5 rounded-xl hover:border-outline-variant/30 transition-all gap-4 text-left">
+                            <div className="flex items-center gap-3.5 min-w-0">
+                              <div className="w-9 h-9 rounded-full bg-secondary/15 flex items-center justify-center border border-secondary/20 flex-shrink-0 text-secondary">
+                                <span className="material-symbols-outlined text-sm font-bold">local_shipping</span>
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="font-bold text-xs text-white leading-none truncate">{driver.name}</p>
+                                <p className="text-[9px] text-on-surface-variant/70 mt-1 truncate">
+                                  {driver.email} • {driver.phone}
+                                </p>
+                                <p className="text-[9px] text-primary mt-0.5 truncate font-semibold">
+                                  License: {driver.drivingLicense || 'N/A'} • {driver.location?.address || 'N/A'}, {driver.city || 'N/A'}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex gap-2 shrink-0">
+                              <button
+                                onClick={() => handleApproveDriver(driver._id)}
+                                className="px-2.5 py-1 rounded bg-emerald-500/20 hover:bg-emerald-500 border border-emerald-500/30 hover:border-emerald-500 text-emerald-400 hover:text-white font-label-caps text-[9px] font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
+                              >
+                                <span className="material-symbols-outlined text-[12px] font-bold">check</span>
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleDeleteDriver(driver._id)}
+                                className="px-2.5 py-1 rounded bg-error/10 hover:bg-error border border-error/20 hover:border-error text-error hover:text-white font-label-caps text-[9px] font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
+                              >
+                                <span className="material-symbols-outlined text-[12px] font-bold">close</span>
+                                Reject
                               </button>
                             </div>
                           </div>
