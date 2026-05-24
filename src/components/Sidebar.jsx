@@ -6,6 +6,8 @@ export default function Sidebar({ currentPage, setPage, currentUser, switchAccou
     ...(currentUser && currentUser.role === 'admin' ? [{ id: 'admin', label: 'Admin Command', icon: 'explore', fill: false }] : []),
     { id: 'home', label: 'Consumer Web', icon: 'home', fill: false },
     { id: 'services', label: 'All Services', icon: 'build', fill: false },
+    { id: 'history', label: 'History', icon: 'history', fill: false },
+    { id: 'settings', label: 'Settings', icon: 'settings', fill: false },
   ];
 
   return (
@@ -53,22 +55,6 @@ export default function Sidebar({ currentPage, setPage, currentUser, switchAccou
             </button>
           );
         })}
-        
-        {/* Mock/Disabled Links */}
-        <button
-          onClick={() => alert("RoadRescue History logs are encrypted on the ledger.")}
-          className="text-on-surface-variant flex items-center gap-4 px-6 py-4 font-label-caps text-label-caps hover:bg-surface-variant/20 hover:text-primary transition-all text-left w-full"
-        >
-          <span className="material-symbols-outlined">history</span>
-          <span>History</span>
-        </button>
-        <button
-          onClick={() => alert("Settings locked. Contact Chief Dispatcher Mercer.")}
-          className="text-on-surface-variant flex items-center gap-4 px-6 py-4 font-label-caps text-label-caps hover:bg-surface-variant/20 hover:text-primary transition-all text-left w-full"
-        >
-          <span className="material-symbols-outlined">settings</span>
-          <span>Settings</span>
-        </button>
       </div>
 
       {/* Bottom Dispatch Trigger & Avatar Card */}

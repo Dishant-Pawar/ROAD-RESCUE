@@ -200,6 +200,57 @@ export const getMe = async (req, res, next) => {
   }
 };
 
+// @desc    Update user profile settings
+// @route   PUT /api/auth/update-profile
+// @access  Private
+export const updateProfile = async (req, res, next) => {
+  try {
+    const { name, phone, profilePhoto, password } = req.body;
+
+    let user;
+    if (req.user.role === 'admin') {
+      user = await Admin.findById(req.user._id);
+    } else {
+      user = await User.findById(req.user._id);
+    }
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Update simple fields
+    if (name) user.name = name;
+    
+    if (req.user.role !== 'admin') {
+      if (phone !== undefined) user.phone = phone;
+      if (profilePhoto !== undefined) user.profilePhoto = profilePhoto;
+    }
+
+    // Update password if provided
+    if (password) {
+      user.password = password;
+    }
+
+    await user.save();
+
+    // Respond with updated user info
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone || '',
+        avatar: user.profilePhoto || user.avatar || '',
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Google Sign-in and dynamic role assignment
 // @route   POST /api/auth/google-login
 // @access  Public

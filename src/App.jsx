@@ -27,6 +27,8 @@ import EmergencySOS from './pages/EmergencySOS';
 import LiveTracking from './pages/LiveTracking';
 import Dashboard from './pages/Dashboard';
 import AdminPanel from './pages/AdminPanel';
+import History from './pages/History';
+import Settings from './pages/Settings';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('home');
@@ -690,12 +692,23 @@ export default function App() {
             cancelIncident={cancelIncident}
           />
         );
+      case 'history':
+        return <History completedIncidents={completedIncidents} setPage={setCurrentPage} />;
+      case 'settings':
+        return (
+          <Settings
+            currentUser={currentUser}
+            setCurrentUser={setCurrentUser}
+            triggerToast={triggerToast}
+            setPage={setCurrentPage}
+          />
+        );
       default:
         return <Home setPage={setCurrentPage} triggerSOS={triggerSOS} currentUser={currentUser} />;
     }
   };
 
-  const showSidebar = currentPage === 'dashboard' || currentPage === 'admin';
+  const showSidebar = currentPage === 'dashboard' || currentPage === 'admin' || currentPage === 'history' || currentPage === 'settings';
 
   if (!currentUser) {
     return (

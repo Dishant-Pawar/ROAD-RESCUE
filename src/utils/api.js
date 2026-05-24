@@ -55,6 +55,11 @@ export const getMeApi = async () => {
   return res.data;
 };
 
+export const updateProfileApi = async (profileData) => {
+  const res = await api.put('/api/auth/update-profile', profileData);
+  return res.data;
+};
+
 // Incidents / ServiceRequests endpoints
 export const getActiveIncidentApi = async () => {
   const res = await api.get('/api/incidents/active');

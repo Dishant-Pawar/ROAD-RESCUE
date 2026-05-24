@@ -7,6 +7,7 @@ import {
   registerAdmin,
   loginAdmin,
   getMe,
+  updateProfile,
   googleLogin
 } from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
@@ -21,5 +22,6 @@ router.post('/register-admin', registerAdmin);
 router.post('/login-admin', loginAdmin);
 router.post('/google-login', googleLogin);
 router.get('/me', protect, getMe);
+router.put('/update-profile', protect, updateProfile);
 
 export default router;
