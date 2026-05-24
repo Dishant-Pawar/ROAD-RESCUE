@@ -280,7 +280,7 @@ export default function Settings({ currentUser, setCurrentUser, triggerToast, se
   const isAdmin = currentUser?.role === 'admin';
 
   return (
-    <div className="p-6 md:p-10 max-w-4xl mx-auto w-full flex flex-col gap-6 animate-in fade-in duration-300">
+    <div className="p-6 md:p-10 max-w-7xl mx-auto w-full flex flex-col gap-6 animate-in fade-in duration-300">
       
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
@@ -540,11 +540,11 @@ export default function Settings({ currentUser, setCurrentUser, triggerToast, se
                 <>
                   {/* Drivers Management */}
                   <div className="flex flex-col gap-3">
-                    <div className="flex justify-between items-center mb-1">
-                      <h4 className="font-label-caps text-[11px] text-primary tracking-widest font-bold">🛡️ MANAGE RESCUE FLEET DRIVERS</h4>
+                    <div className="flex justify-between items-center mb-1 gap-4">
+                      <h4 className="font-label-caps text-[11px] text-primary tracking-widest font-bold whitespace-nowrap">🛡️ MANAGE RESCUE FLEET DRIVERS</h4>
                       <button
                         onClick={() => handleOpenDriverModal()}
-                        className="py-1 px-3 rounded bg-primary/20 hover:bg-primary border border-primary/30 hover:text-white text-primary font-label-caps text-[9px] font-bold tracking-wider transition-all flex items-center gap-1 cursor-pointer"
+                        className="py-1.5 px-3.5 rounded bg-primary/20 hover:bg-primary border border-primary/30 hover:text-white text-primary font-label-caps text-[9px] font-bold tracking-wider transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap flex-shrink-0"
                       >
                         <span className="material-symbols-outlined text-[12px] font-bold">person_add</span>
                         Register Driver
@@ -557,34 +557,43 @@ export default function Settings({ currentUser, setCurrentUser, triggerToast, se
                         </div>
                       ) : (
                         drivers.map(driver => (
-                          <div key={driver._id} className="flex justify-between items-center bg-surface-container-low/30 border border-outline-variant/10 p-3 rounded-xl hover:border-outline-variant/30 transition-all gap-4">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <img src={driver.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDQvr_HDAe8dIuPOCeH_hCSd8oy2NmxlGvMzAXNKZDtXqxmAQgsaGSbBp5nFz1F94bhRK9iZRp1PDfy-7_3e-n4HIisgKFOcvr6pG4Cv4oPIneIbmFH9Sqz2u75z1w8iPk2Z5oty9UnXzkmiSdHTB3bl_fJa8WUNPXSIxYtC-S6m6-wYXVBvz6dJYp08B6AZbwAhF4TX5NrkjgjyvQvPkZQY-4drXs-3zXAg-CXmBGaSn1SE_x-a1PCjSgYqcK0sA0xhEeAkhUcRX4'} alt={driver.name} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
-                              <div className="min-w-0">
-                                <p className="font-bold text-xs text-on-surface leading-none truncate flex items-center gap-1.5 text-white">
-                                  {driver.name}
-                                  {driver.status === 'inactive' && (
-                                    <span className="text-[7px] bg-neutral-800 border border-neutral-700 text-neutral-400 px-1 py-0.2 rounded font-bold uppercase tracking-wider">
+                          <div key={driver._id} className="flex justify-between items-center bg-surface-container-low/30 border border-outline-variant/10 p-3.5 rounded-xl hover:border-outline-variant/30 transition-all gap-4">
+                            <div className="flex items-center gap-3.5 min-w-0">
+                              <img src={driver.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDQvr_HDAe8dIuPOCeH_hCSd8oy2NmxlGvMzAXNKZDtXqxmAQgsaGSbBp5nFz1F94bhRK9iZRp1PDfy-7_3e-n4HIisgKFOcvr6pG4Cv4oPIneIbmFH9Sqz2u75z1w8iPk2Z5oty9UnXzkmiSdHTB3bl_fJa8WUNPXSIxYtC-S6m6-wYXVBvz6dJYp08B6AZbwAhF4TX5NrkjgjyvQvPkZQY-4drXs-3zXAg-CXmBGaSn1SE_x-a1PCjSgYqcK0sA0xhEeAkhUcRX4'} alt={driver.name} className="w-9 h-9 rounded-full object-cover flex-shrink-0 border border-white/5" />
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="font-bold text-xs text-white leading-none truncate">{driver.name}</p>
+                                  {driver.status === 'inactive' ? (
+                                    <span className="text-[7px] bg-neutral-800 border border-neutral-700 text-neutral-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider whitespace-nowrap">
                                       OFFLINE
                                     </span>
+                                  ) : (
+                                    <span className="text-[7px] bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider whitespace-nowrap animate-pulse">
+                                      ACTIVE
+                                    </span>
                                   )}
-                                </p>
-                                <p className="text-[10px] text-on-surface-variant/70 mt-1 leading-none truncate">
-                                  {driver.specialty} • {driver.vehicle?.name || 'Unit #402'}
-                                </p>
+                                </div>
+                                <div className="mt-1 flex flex-col gap-0.5 min-w-0">
+                                  <p className="text-[10px] text-primary font-semibold leading-tight truncate">
+                                    {driver.specialty}
+                                  </p>
+                                  <p className="text-[9px] text-on-surface-variant/60 leading-none truncate">
+                                    {driver.vehicle?.name || 'Heavy Tow'} • {driver.vehicle?.plate || 'RD-RESC-9'}
+                                  </p>
+                                </div>
                               </div>
                             </div>
                             <div className="flex gap-2 shrink-0">
                               <button
                                 onClick={() => handleOpenDriverModal(driver)}
-                                className="px-2.5 py-1 rounded bg-secondary/15 hover:bg-secondary border border-secondary/20 hover:border-secondary text-secondary hover:text-white font-label-caps text-[9px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                                className="px-2.5 py-1 rounded bg-secondary/15 hover:bg-secondary border border-secondary/20 hover:border-secondary text-secondary hover:text-white font-label-caps text-[9px] font-bold transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap"
                               >
                                 <span className="material-symbols-outlined text-[10px] font-bold">edit</span>
                                 Edit
                               </button>
                               <button
                                 onClick={() => handleDeleteDriver(driver._id)}
-                                className="px-2.5 py-1 rounded bg-error/10 hover:bg-error border border-error/20 hover:border-error text-error hover:text-white font-label-caps text-[9px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                                className="px-2.5 py-1 rounded bg-error/10 hover:bg-error border border-error/20 hover:border-error text-error hover:text-white font-label-caps text-[9px] font-bold transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap"
                               >
                                 <span className="material-symbols-outlined text-[10px] font-bold">delete</span>
                                 Purge
