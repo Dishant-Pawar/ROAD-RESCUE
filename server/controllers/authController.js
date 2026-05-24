@@ -393,12 +393,11 @@ export const toggleBlockUser = async (req, res, next) => {
 // @access  Private/Admin
 export const deleteUser = async (req, res, next) => {
   try {
-    const user = await User.findById(req.params.id);
+    const user = await User.findByIdAndDelete(req.params.id);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    await user.deleteOne();
     res.status(200).json({ success: true, message: 'User account permanently purged from terminal data logs.' });
   } catch (error) {
     next(error);
@@ -410,12 +409,11 @@ export const deleteUser = async (req, res, next) => {
 // @access  Private/Admin
 export const deleteDriver = async (req, res, next) => {
   try {
-    const mechanic = await Mechanic.findById(req.params.id);
+    const mechanic = await Mechanic.findByIdAndDelete(req.params.id);
     if (!mechanic) {
       return res.status(404).json({ success: false, message: 'Driver not found' });
     }
 
-    await mechanic.deleteOne();
     res.status(200).json({ success: true, message: 'Driver unit profile permanently purged from the logistics roster.' });
   } catch (error) {
     next(error);

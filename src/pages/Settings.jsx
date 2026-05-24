@@ -172,7 +172,8 @@ export default function Settings({ currentUser, setCurrentUser, triggerToast, se
         await fetchAdminData();
       }
     } catch (err) {
-      triggerToast("❌ Failed to purge user account.", "error");
+      const errMsg = err.response?.data?.message || err.response?.data?.error || err.message || "Failed to purge user account.";
+      triggerToast(`❌ ${errMsg}`, "error");
     }
   };
 
@@ -185,7 +186,8 @@ export default function Settings({ currentUser, setCurrentUser, triggerToast, se
         await fetchAdminData();
       }
     } catch (err) {
-      triggerToast("❌ Failed to purge driver unit profile.", "error");
+      const errMsg = err.response?.data?.message || err.response?.data?.error || err.message || "Failed to purge driver unit profile.";
+      triggerToast(`❌ ${errMsg}`, "error");
     }
   };
 

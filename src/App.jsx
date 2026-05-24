@@ -835,14 +835,6 @@ export default function App() {
                 </div>
 
                 <button 
-                  onClick={() => setIsBypassMode(true)}
-                  className="py-2.5 px-4 rounded border border-outline-variant/30 hover:border-primary/50 bg-surface-container-high/40 hover:bg-surface-variant/40 text-primary font-label-caps text-[10px] tracking-widest font-bold uppercase transition-all flex items-center justify-center gap-2"
-                >
-                  <span className="material-symbols-outlined text-[16px]">terminal</span>
-                  Developer Sandbox Bypass
-                </button>
-
-                <button 
                   onClick={() => setIsPublicDriverModalOpen(true)}
                   className="py-2.5 px-4 rounded border border-outline-variant/30 hover:border-secondary/50 bg-surface-container-high/40 hover:bg-surface-variant/40 text-secondary font-label-caps text-[10px] tracking-widest font-bold uppercase transition-all flex items-center justify-center gap-2"
                 >
