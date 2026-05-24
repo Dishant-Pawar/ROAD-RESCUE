@@ -33,11 +33,10 @@ export default function LiveTracking({ setPage, activeIncident, addChatMessage, 
       attributionControl: false
     });
 
-    const apiKey = import.meta.env.VITE_STADIA_MAPS_API_KEY || '1wB8YffYmnKghuK4Iz62';
-    
-    // Stadia Maps dark theme
-    L.tileLayer(`https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png?api_key=${apiKey}`, {
-      maxZoom: 20
+    // Premium CartoDB Dark Matter tile layer (completely free, zero-key open source dark mode map)
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 20,
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
     }).addTo(map);
 
     mapRef.current = map;
