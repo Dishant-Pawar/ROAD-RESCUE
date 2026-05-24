@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import axios from 'axios';
 import User from '../models/User.js';
 import Mechanic from '../models/Mechanic.js';
 import Admin from '../models/Admin.js';
@@ -218,10 +219,25 @@ export const googleLogin = async (req, res, next) => {
         return res.status(400).json({ success: false, message: 'No Google credential provided' });
       }
 
-      // Decode Google ID Token (cryptographically signed JWT payload)
-      const decoded = jwt.decode(credential);
+      // Cryptographically verify Google ID Token using Google tokeninfo API to prevent client-side token forgery
+      let decoded;
+      try {
+        const verifyRes = await axios.get(`https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`);
+        decoded = verifyRes.data;
+      } catch (err) {
+        console.error("Google token verification failed:", err.message);
+        return res.status(401).json({ success: false, message: 'Google authentication token verification failed' });
+      }
+
       if (!decoded || !decoded.email) {
-        return res.status(400).json({ success: false, message: 'Invalid Google credential token' });
+        return res.status(400).json({ success: false, message: 'Invalid Google token payload structure' });
+      }
+
+      // Verify audience matches our Google Client ID
+      const expectedClientId = process.env.VITE_GOOGLE_CLIENT_ID || '60313722264-j2a9b50nk9fv3qus8mosah0meqc1fm1v.apps.googleusercontent.com';
+      if (decoded.aud !== expectedClientId) {
+        console.warn(`Audience mismatch: expected ${expectedClientId}, got ${decoded.aud}`);
+        return res.status(401).json({ success: false, message: 'Google token audience mismatch' });
       }
 
       email = decoded.email;

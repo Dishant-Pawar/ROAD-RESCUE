@@ -331,7 +331,7 @@ export default function App() {
     initAuth();
 
     // Setup Socket.io client connection for instantaneous updates
-    const socketUrl = import.meta.env.PROD ? window.location.origin : 'http://127.0.0.1:5000';
+    const socketUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? window.location.origin : 'http://127.0.0.1:5000');
     const socket = io(socketUrl);
 
     socket.on('connect', () => {
