@@ -1,5 +1,13 @@
-import { useState } from 'react';
-import { updateProfileApi } from '../utils/api';
+import { useEffect, useState } from 'react';
+import { 
+  updateProfileApi, 
+  getUsersApi, 
+  toggleBlockUserApi, 
+  deleteUserApi, 
+  deleteDriverApi, 
+  purgeSystemDataApi,
+  getMechanicsApi 
+} from '../utils/api';
 
 export default function Settings({ currentUser, setCurrentUser, triggerToast, setPage }) {
   const [activeSubTab, setActiveSubTab] = useState('profile');
@@ -11,6 +19,11 @@ export default function Settings({ currentUser, setCurrentUser, triggerToast, se
   const [profilePhoto, setProfilePhoto] = useState(currentUser?.avatar || currentUser?.profilePhoto || '');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Administration state lists
+  const [users, setUsers] = useState([]);
+  const [drivers, setDrivers] = useState([]);
+  const [fetchLoading, setFetchLoading] = useState(false);
 
   // Preset Premium Avatars to give the user excellent high-end graphics presets out of the box
   const avatarPresets = [
@@ -82,7 +95,94 @@ export default function Settings({ currentUser, setCurrentUser, triggerToast, se
     }
   };
 
-  const isEV = currentUser?.role === 'user';
+  // Administration actions
+  const fetchAdminData = async () => {
+    if (currentUser?.role !== 'admin') return;
+    setFetchLoading(true);
+    try {
+      const usersRes = await getUsersApi();
+      if (usersRes && usersRes.success && usersRes.data) {
+        setUsers(usersRes.data);
+      }
+      
+      const driversRes = await getMechanicsApi();
+      if (driversRes && driversRes.success && driversRes.data) {
+        setDrivers(driversRes.data);
+      }
+    } catch (err) {
+      console.error("Failed to load administration data:", err);
+      triggerToast("❌ Failed to load administration data logs.", "error");
+    } finally {
+      setFetchLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSubTab === 'admin') {
+      fetchAdminData();
+    }
+  }, [activeSubTab]);
+
+  const handleToggleBlockUser = async (userId) => {
+    try {
+      const res = await toggleBlockUserApi(userId);
+      if (res && res.success) {
+        triggerToast(`🔒 ${res.message}`, "success");
+        await fetchAdminData();
+      }
+    } catch (err) {
+      triggerToast("❌ Failed to update block status.", "error");
+    }
+  };
+
+  const handleDeleteUser = async (userId) => {
+    if (!window.confirm("🚨 WARNING: Are you sure you want to permanently delete this user account from the database? All active sessions will be terminated. This action is irreversible.")) return;
+    try {
+      const res = await deleteUserApi(userId);
+      if (res && res.success) {
+        triggerToast("🗑️ User account successfully purged.", "success");
+        await fetchAdminData();
+      }
+    } catch (err) {
+      triggerToast("❌ Failed to purge user account.", "error");
+    }
+  };
+
+  const handleDeleteDriver = async (driverId) => {
+    if (!window.confirm("🚨 WARNING: Are you sure you want to permanently delete this driver unit profile from the logistics roster? This action is irreversible.")) return;
+    try {
+      const res = await deleteDriverApi(driverId);
+      if (res && res.success) {
+        triggerToast("🗑️ Driver unit profile successfully purged.", "success");
+        await fetchAdminData();
+      }
+    } catch (err) {
+      triggerToast("❌ Failed to purge driver unit profile.", "error");
+    }
+  };
+
+  const handlePurgeSystemData = async () => {
+    const confirmation = window.prompt("🚨 HIGH-STAKES SECURITY PURGE OVERRIDE 🚨\n\nThis action will completely delete all operations history, completed rescue tickets, invoice ledgers, system alerts, and satellite reports from the database.\n\nType 'PURGE ALL HISTORY' below to confirm this command:");
+    if (confirmation !== 'PURGE ALL HISTORY') {
+      triggerToast("⚠️ Verification mismatched. Database purge aborted.", "warning");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await purgeSystemDataApi();
+      if (res && res.success) {
+        triggerToast("💥 Database purged! All system history wiped.", "success");
+        if (setPage) setPage('dashboard');
+      }
+    } catch (err) {
+      triggerToast("❌ Purge override sequence failed.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isAdmin = currentUser?.role === 'admin';
 
   return (
     <div className="p-6 md:p-10 max-w-4xl mx-auto w-full flex flex-col gap-6 animate-in fade-in duration-300">
@@ -96,11 +196,13 @@ export default function Settings({ currentUser, setCurrentUser, triggerToast, se
           </p>
         </div>
         <button 
-          onClick={() => setPage('dashboard')}
+          onClick={() => setPage(isAdmin ? 'admin' : 'dashboard')}
           className="py-2.5 px-6 rounded-full border border-primary text-primary font-label-caps text-label-caps hover:bg-primary/10 transition-colors flex items-center gap-2"
         >
-          <span className="material-symbols-outlined text-[18px]">dashboard</span>
-          Dashboard
+          <span className="material-symbols-outlined text-[18px]">
+            {isAdmin ? 'explore' : 'dashboard'}
+          </span>
+          {isAdmin ? 'Command Center' : 'Dashboard'}
         </button>
       </div>
 
@@ -120,6 +222,7 @@ export default function Settings({ currentUser, setCurrentUser, triggerToast, se
             <span className="material-symbols-outlined text-[18px]">person</span>
             Profile Settings
           </button>
+          
           <button
             onClick={() => setActiveSubTab('security')}
             className={`flex items-center gap-3 px-4 py-3 rounded-lg font-label-caps text-xs tracking-wider text-left transition-all ${
@@ -131,6 +234,20 @@ export default function Settings({ currentUser, setCurrentUser, triggerToast, se
             <span className="material-symbols-outlined text-[18px]">lock</span>
             Terminal Passphrase
           </button>
+
+          {isAdmin && (
+            <button
+              onClick={() => setActiveSubTab('admin')}
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg font-label-caps text-xs tracking-wider text-left transition-all ${
+                activeSubTab === 'admin'
+                  ? 'bg-primary-container/10 text-primary font-bold border-l-4 border-primary'
+                  : 'text-on-surface-variant hover:bg-surface-variant/20 hover:text-primary'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[18px]">admin_panel_settings</span>
+              System Overrides
+            </button>
+          )}
         </div>
 
         {/* Settings Right Tab Pane */}
@@ -242,7 +359,7 @@ export default function Settings({ currentUser, setCurrentUser, triggerToast, se
 
               </form>
             </div>
-          ) : (
+          ) : activeSubTab === 'security' ? (
             /* Passphrase settings Tab */
             <div className="flex flex-col gap-6 animate-in fade-in duration-200">
               <div>
@@ -251,7 +368,7 @@ export default function Settings({ currentUser, setCurrentUser, triggerToast, se
                   Terminal Credentials Overrides
                 </h3>
                 <p className="text-xs text-on-surface-variant/70 mt-1">
-                  Change the secure terminal passphrase used to cryptographically sign into your operator account.
+                  Change the secure terminal passphrase used to sign into your operator account.
                 </p>
               </div>
 
@@ -303,6 +420,133 @@ export default function Settings({ currentUser, setCurrentUser, triggerToast, se
                 </button>
 
               </form>
+            </div>
+          ) : (
+            /* System Administration Tab (System Overrides) */
+            <div className="flex flex-col gap-8 animate-in fade-in duration-200 text-left">
+              
+              {/* Header */}
+              <div>
+                <h3 className="text-xl font-title-md font-bold text-on-surface flex items-center gap-2 text-white">
+                  <span className="material-symbols-outlined text-primary">admin_panel_settings</span>
+                  System Overrides & Administration
+                </h3>
+                <p className="text-xs text-on-surface-variant/70 mt-1">
+                  Manage active drivers, registered users, and execute full ledger overrides.
+                </p>
+              </div>
+
+              {fetchLoading ? (
+                <div className="py-12 flex flex-col items-center justify-center gap-3">
+                  <span className="material-symbols-outlined text-primary text-[36px] animate-spin">cached</span>
+                  <p className="font-label-caps text-[10px] text-on-surface-variant tracking-wider font-bold">Accessing Secure Records...</p>
+                </div>
+              ) : (
+                <>
+                  {/* Drivers Management */}
+                  <div className="flex flex-col gap-3">
+                    <h4 className="font-label-caps text-[11px] text-primary tracking-widest font-bold">🛡️ MANAGE RESCUE FLEET DRIVERS</h4>
+                    <div className="flex flex-col gap-2.5 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
+                      {drivers.length === 0 ? (
+                        <div className="text-xs text-on-surface-variant/50 py-4 bg-surface-container-low/30 rounded-lg p-4 border border-outline-variant/5">
+                          No active rescue units registered in the fleet roster.
+                        </div>
+                      ) : (
+                        drivers.map(driver => (
+                          <div key={driver._id} className="flex justify-between items-center bg-surface-container-low/30 border border-outline-variant/10 p-3 rounded-xl hover:border-outline-variant/30 transition-all gap-4">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <img src={driver.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDQvr_HDAe8dIuPOCeH_hCSd8oy2NmxlGvMzAXNKZDtXqxmAQgsaGSbBp5nFz1F94bhRK9iZRp1PDfy-7_3e-n4HIisgKFOcvr6pG4Cv4oPIneIbmFH9Sqz2u75z1w8iPk2Z5oty9UnXzkmiSdHTB3bl_fJa8WUNPXSIxYtC-S6m6-wYXVBvz6dJYp08B6AZbwAhF4TX5NrkjgjyvQvPkZQY-4drXs-3zXAg-CXmBGaSn1SE_x-a1PCjSgYqcK0sA0xhEeAkhUcRX4'} alt={driver.name} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                              <div className="min-w-0">
+                                <p className="font-bold text-xs text-on-surface leading-none truncate">{driver.name}</p>
+                                <p className="text-[10px] text-on-surface-variant/70 mt-1 leading-none truncate">
+                                  {driver.specialty} • {driver.vehicle?.name || 'Unit #402'}
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => handleDeleteDriver(driver._id)}
+                              className="px-2.5 py-1 rounded bg-error/10 hover:bg-error border border-error/20 hover:border-error text-error hover:text-white font-label-caps text-[9px] font-bold transition-all shrink-0 cursor-pointer"
+                            >
+                              Purge Driver
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Users Management */}
+                  <div className="flex flex-col gap-3 mt-2">
+                    <h4 className="font-label-caps text-[11px] text-primary tracking-widest font-bold">👤 MANAGE SECURE CLIENTS</h4>
+                    <div className="flex flex-col gap-2.5 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
+                      {users.length === 0 ? (
+                        <div className="text-xs text-on-surface-variant/50 py-4 bg-surface-container-low/30 rounded-lg p-4 border border-outline-variant/5">
+                          No registered user accounts found in credentials ledger.
+                        </div>
+                      ) : (
+                        users.map(u => (
+                          <div key={u._id} className="flex justify-between items-center bg-surface-container-low/30 border border-outline-variant/10 p-3 rounded-xl hover:border-outline-variant/30 transition-all gap-4">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center border border-outline-variant/20 flex-shrink-0 text-on-surface-variant">
+                                <span className="material-symbols-outlined text-sm">person</span>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-bold text-xs text-on-surface leading-none flex items-center gap-1.5 truncate">
+                                  {u.name}
+                                  {u.isBlocked && (
+                                    <span className="text-[8px] bg-error/10 border border-error/30 text-error px-1 py-0.5 rounded font-bold uppercase tracking-wider scale-90">
+                                      LOCKED
+                                    </span>
+                                  )}
+                                </p>
+                                <p className="text-[10px] text-on-surface-variant/70 mt-1 leading-none truncate">{u.email}</p>
+                              </div>
+                            </div>
+                            <div className="flex gap-2 shrink-0">
+                              <button
+                                onClick={() => handleToggleBlockUser(u._id)}
+                                className={`px-2.5 py-1 rounded font-label-caps text-[9px] font-bold transition-all border cursor-pointer ${
+                                  u.isBlocked
+                                    ? 'bg-emerald-500/10 hover:bg-emerald-500 border-emerald-500/20 hover:border-emerald-500 text-emerald-400 hover:text-white'
+                                    : 'bg-secondary/10 hover:bg-secondary border-secondary/20 hover:border-secondary text-secondary hover:text-white'
+                                }`}
+                              >
+                                {u.isBlocked ? 'Unlock' : 'Lock'}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteUser(u._id)}
+                                className="px-2.5 py-1 rounded bg-error/10 hover:bg-error border border-error/20 hover:border-error text-error hover:text-white font-label-caps text-[9px] font-bold transition-all cursor-pointer"
+                              >
+                                Purge
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Danger Zone */}
+                  <div className="bg-error/5 border border-error/20 rounded-xl p-5 mt-4 flex flex-col gap-4">
+                    <div>
+                      <h4 className="font-label-caps text-xs text-error tracking-widest font-bold flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[16px] animate-pulse">warning</span>
+                        CRITICAL OVERRIDE: PURGE CENTRAL ARCHIVES
+                      </h4>
+                      <p className="text-[11px] text-on-surface-variant/80 mt-1.5 leading-relaxed">
+                        Executing this command permanently purges **all rescue incident logs, invoice transactions, invoices payments, user notifications, and GPS satellite emergency reports** from the active MongoDB database collections.
+                      </p>
+                    </div>
+                    <button
+                      onClick={handlePurgeSystemData}
+                      className="py-3 px-6 rounded bg-error hover:bg-error-container text-white font-label-caps text-[10px] tracking-widest font-bold uppercase transition-all shadow-[0_0_15px_rgba(255,0,0,0.2)] hover:shadow-[0_0_20px_rgba(255,0,0,0.4)] flex items-center justify-center gap-2 self-start cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">delete_forever</span>
+                      Wipe System Operations Ledger
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
 

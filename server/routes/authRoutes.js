@@ -8,9 +8,14 @@ import {
   loginAdmin,
   getMe,
   updateProfile,
-  googleLogin
+  googleLogin,
+  getUsers,
+  toggleBlockUser,
+  deleteUser,
+  deleteDriver,
+  purgeSystemData
 } from '../controllers/authController.js';
-import { protect } from '../middleware/auth.js';
+import { protect, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -23,5 +28,12 @@ router.post('/login-admin', loginAdmin);
 router.post('/google-login', googleLogin);
 router.get('/me', protect, getMe);
 router.put('/update-profile', protect, updateProfile);
+
+// System Overrides & Administration
+router.get('/users', protect, authorize('admin'), getUsers);
+router.put('/users/:id/block', protect, authorize('admin'), toggleBlockUser);
+router.delete('/users/:id', protect, authorize('admin'), deleteUser);
+router.delete('/drivers/:id', protect, authorize('admin'), deleteDriver);
+router.delete('/system/purge', protect, authorize('admin'), purgeSystemData);
 
 export default router;

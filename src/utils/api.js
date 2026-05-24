@@ -179,4 +179,30 @@ export const getClientStatsApi = async () => {
   return res.data;
 };
 
+// Administrative Actions
+export const getUsersApi = async () => {
+  const res = await api.get('/api/auth/users');
+  return res.data;
+};
+
+export const toggleBlockUserApi = async (id) => {
+  const res = await api.put(`/api/auth/users/${id}/block`);
+  return res.data;
+};
+
+export const deleteUserApi = async (id) => {
+  const res = await api.delete(`/api/auth/users/${id}`);
+  return res.data;
+};
+
+export const deleteDriverApi = async (id) => {
+  const res = await api.delete(`/api/auth/drivers/${id}`);
+  return res.data;
+};
+
+export const purgeSystemDataApi = async () => {
+  const res = await api.delete('/api/auth/system/purge');
+  return res.data;
+};
+
 export default api;

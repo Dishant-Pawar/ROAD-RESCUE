@@ -3,6 +3,10 @@ import axios from 'axios';
 import User from '../models/User.js';
 import Mechanic from '../models/Mechanic.js';
 import Admin from '../models/Admin.js';
+import Payment from '../models/Payment.js';
+import Notification from '../models/Notification.js';
+import EmergencyReport from '../models/EmergencyReport.js';
+import ServiceRequest from '../models/ServiceRequest.js';
 
 // Helper to generate JWT token and respond
 const sendTokenResponse = (user, statusCode, res) => {
@@ -70,6 +74,10 @@ export const loginUser = async (req, res, next) => {
     const isMatch = await user.matchPassword(password);
     if (!isMatch) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+
+    if (user.isBlocked) {
+      return res.status(403).json({ success: false, message: '🔒 Access Denied: This terminal account has been locked by the Command Center Operator.' });
     }
 
     sendTokenResponse(user, 200, res);
@@ -335,7 +343,99 @@ export const googleLogin = async (req, res, next) => {
       }
     }
 
+    if (user.isBlocked) {
+      return res.status(403).json({ success: false, message: '🔒 Access Denied: This terminal account has been locked by the Command Center Operator.' });
+    }
+
     sendTokenResponse(user, 200, res);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get all registered users
+// @route   GET /api/auth/users
+// @access  Private/Admin
+export const getUsers = async (req, res, next) => {
+  try {
+    const users = await User.find({}).sort({ createdAt: -1 });
+    res.status(200).json({ success: true, count: users.length, data: users });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Block or unblock user account
+// @route   PUT /api/auth/users/:id/block
+// @access  Private/Admin
+export const toggleBlockUser = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    user.isBlocked = !user.isBlocked;
+    await user.save();
+
+    res.status(200).json({ 
+      success: true, 
+      message: `User account successfully ${user.isBlocked ? 'blocked' : 'unblocked'}.`, 
+      data: user 
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Delete user account
+// @route   DELETE /api/auth/users/:id
+// @access  Private/Admin
+export const deleteUser = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    await user.deleteOne();
+    res.status(200).json({ success: true, message: 'User account permanently purged from terminal data logs.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Delete driver/mechanic profile
+// @route   DELETE /api/auth/drivers/:id
+// @access  Private/Admin
+export const deleteDriver = async (req, res, next) => {
+  try {
+    const mechanic = await Mechanic.findById(req.params.id);
+    if (!mechanic) {
+      return res.status(404).json({ success: false, message: 'Driver not found' });
+    }
+
+    await mechanic.deleteOne();
+    res.status(200).json({ success: true, message: 'Driver unit profile permanently purged from the logistics roster.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Purge all database operations history (incidents, payments, notifications, emergency reports)
+// @route   DELETE /api/auth/system/purge
+// @access  Private/Admin
+export const purgeSystemData = async (req, res, next) => {
+  try {
+    await ServiceRequest.deleteMany({});
+    await Payment.deleteMany({});
+    await Notification.deleteMany({});
+    await EmergencyReport.deleteMany({});
+    
+    res.status(200).json({
+      success: true,
+      message: '🚨 System Overrides Active: All operations history, invoices, alerts, and satellite reports purged from the central database.'
+    });
   } catch (error) {
     next(error);
   }

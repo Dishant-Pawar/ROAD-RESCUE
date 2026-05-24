@@ -562,7 +562,8 @@ export const getClientStats = async (req, res, next) => {
 // @access  Private/Admin
 export const getMechanics = async (req, res, next) => {
   try {
-    const mechanics = await Mechanic.find({ status: 'active' });
+    const filter = req.userRole === 'admin' ? {} : { status: 'active' };
+    const mechanics = await Mechanic.find(filter);
     
     // Find mechanics who currently have an active assigned request
     const busyMechanicIds = await ServiceRequest.find({ status: 'Assigned' }).distinct('mechanic');
