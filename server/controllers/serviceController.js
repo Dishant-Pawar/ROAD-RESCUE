@@ -11,7 +11,15 @@ import Vehicle from '../models/Vehicle.js';
 // @access  Private/Admin
 export const getRequests = async (req, res, next) => {
   try {
-    const requests = await ServiceRequest.find({ status: { $in: ['Pending', 'Assigned'] } }).sort({ createdAt: -1 });
+    let query = { status: { $in: ['Pending', 'Assigned'] } };
+    
+    if (req.query.all === 'true' || req.query.status === 'all') {
+      query = {}; // Fetch all requests
+    } else if (req.query.status) {
+      query = { status: req.query.status };
+    }
+
+    const requests = await ServiceRequest.find(query).sort({ createdAt: -1 });
     res.status(200).json({ success: true, count: requests.length, data: requests });
   } catch (error) {
     next(error);

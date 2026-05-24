@@ -77,8 +77,9 @@ export const createIncidentApi = async (type, issue, loc, reqType, latitude, lon
   return res.data;
 };
 
-export const getAllIncidentsApi = async () => {
-  const res = await api.get('/api/incidents');
+export const getAllIncidentsApi = async (all = false) => {
+  const url = all ? '/api/incidents?all=true' : '/api/incidents';
+  const res = await api.get(url);
   if (res.data && res.data.data) {
     res.data.data = res.data.data.map(formatIncident);
   }

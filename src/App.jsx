@@ -42,6 +42,7 @@ export default function App() {
   const [activeIncident, setActiveIncident] = useState(null);
   const [adminIncidents, setAdminIncidents] = useState([]);
   const [completedIncidents, setCompletedIncidents] = useState([]);
+  const [adminTicketsHistory, setAdminTicketsHistory] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [notifications, setNotifications] = useState([]);
 
@@ -79,6 +80,7 @@ export default function App() {
 
   const fetchHistory = async () => {
     try {
+      // 1. Fetch payment/invoice ledger records (User & Admin)
       const paymentsRes = await getPaymentsApi();
       if (paymentsRes && paymentsRes.success && paymentsRes.data) {
         const formatted = paymentsRes.data.map(p => ({
@@ -91,8 +93,27 @@ export default function App() {
         }));
         setCompletedIncidents(formatted);
       }
+
+      // 2. Fetch full operational rescue ticket history if admin is logged in
+      const localUser = JSON.parse(localStorage.getItem('user')) || currentUser;
+      if (localUser && localUser.role === 'admin') {
+        const ticketsRes = await getAllIncidentsApi(true); // Fetch all (including completed/cancelled)
+        if (ticketsRes && ticketsRes.success && ticketsRes.data) {
+          const formattedTickets = ticketsRes.data.map(t => ({
+            id: t.ticketId || t.id,
+            date: new Date(t.createdAt).toLocaleDateString([], { month: 'short', day: '2-digit', year: 'numeric' }),
+            service: t.type,
+            vehicle: t.customerVehicle || 'None',
+            status: t.status.toUpperCase(), // PENDING, ASSIGNED, COMPLETED, CANCELLED
+            loc: t.loc,
+            driverName: t.driverName || 'None Assigned',
+            req: t.req
+          }));
+          setAdminTicketsHistory(formattedTickets);
+        }
+      }
     } catch (err) {
-      console.error("Failed to load invoices:", err);
+      console.error("Failed to load operations ledger history:", err);
     }
   };
 
@@ -575,22 +596,11 @@ export default function App() {
           triggerToast(`💚 Command ledger: Incident #${id} archived as completed.`, 'success');
         }
         
-        // Refresh payments/invoice lists (wrapped in a nested try-catch to prevent guest/token failures from breaking completion)
+        // Refresh complete operations history after resolution
         try {
-          const paymentsRes = await getPaymentsApi();
-          if (paymentsRes && paymentsRes.success && paymentsRes.data) {
-            const formatted = paymentsRes.data.map(p => ({
-              id: p.transactionId,
-              date: new Date(p.createdAt).toLocaleDateString([], { month: 'short', day: '2-digit', year: 'numeric' }),
-              service: p.serviceRequest ? p.serviceRequest.type : 'Road Rescue Assistance',
-              vehicle: p.serviceRequest && p.serviceRequest.customerVehicle ? p.serviceRequest.customerVehicle : 'Tesla Model S Plaid',
-              status: p.status === 'Completed' ? 'COMPLETED' : 'CANCELLED',
-              cost: `$${p.amount.toFixed(2)}`
-            }));
-            setCompletedIncidents(formatted);
-          }
+          await fetchHistory();
         } catch (paymentErr) {
-          console.warn("Failed to refresh payments history after resolution:", paymentErr);
+          console.warn("Failed to refresh history after resolution:", paymentErr);
         }
       }
     } catch (error) {
@@ -608,6 +618,12 @@ export default function App() {
         if (activeIncident && activeIncident.id === id) {
           setActiveIncident(null);
           triggerToast(`⚠️ Emergency request cancelled. Beacon powered off.`, 'warning');
+        }
+        // Refresh complete operations history after cancellation
+        try {
+          await fetchHistory();
+        } catch (err) {
+          console.warn("Failed to refresh history after cancellation:", err);
         }
       }
     } catch (error) {
@@ -693,7 +709,14 @@ export default function App() {
           />
         );
       case 'history':
-        return <History completedIncidents={completedIncidents} setPage={setCurrentPage} />;
+        return (
+          <History
+            completedIncidents={completedIncidents}
+            adminTicketsHistory={adminTicketsHistory}
+            currentUser={currentUser}
+            setPage={setCurrentPage}
+          />
+        );
       case 'settings':
         return (
           <Settings
