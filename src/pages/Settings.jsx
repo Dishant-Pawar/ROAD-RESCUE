@@ -6,7 +6,9 @@ import {
   deleteUserApi, 
   deleteDriverApi, 
   purgeSystemDataApi,
-  getMechanicsApi 
+  getMechanicsApi,
+  addDriverApi,
+  updateDriverApi
 } from '../utils/api';
 
 export default function Settings({ currentUser, setCurrentUser, triggerToast, setPage }) {
@@ -24,6 +26,20 @@ export default function Settings({ currentUser, setCurrentUser, triggerToast, se
   const [users, setUsers] = useState([]);
   const [drivers, setDrivers] = useState([]);
   const [fetchLoading, setFetchLoading] = useState(false);
+
+  // Driver modal and form states
+  const [isDriverModalOpen, setIsDriverModalOpen] = useState(false);
+  const [editingDriver, setEditingDriver] = useState(null);
+  const [driverName, setDriverName] = useState('');
+  const [driverEmail, setDriverEmail] = useState('');
+  const [driverPhone, setDriverPhone] = useState('');
+  const [driverPassword, setDriverPassword] = useState('');
+  const [driverSpecialty, setDriverSpecialty] = useState('General Assistance');
+  const [driverVehicleName, setDriverVehicleName] = useState('Heavy Tow • Unit #402');
+  const [driverVehiclePlate, setDriverVehiclePlate] = useState('RD-RESC-9');
+  const [driverAvatar, setDriverAvatar] = useState('');
+  const [driverStatus, setDriverStatus] = useState('active');
+  const [driverSubmitLoading, setDriverSubmitLoading] = useState(false);
 
   // Preset Premium Avatars to give the user excellent high-end graphics presets out of the box
   const avatarPresets = [
@@ -158,6 +174,85 @@ export default function Settings({ currentUser, setCurrentUser, triggerToast, se
       }
     } catch (err) {
       triggerToast("❌ Failed to purge driver unit profile.", "error");
+    }
+  };
+
+  const handleOpenDriverModal = (driver = null) => {
+    if (driver) {
+      // Editing Mode
+      setEditingDriver(driver);
+      setDriverName(driver.name || '');
+      setDriverEmail(driver.email || '');
+      setDriverPhone(driver.phone || '');
+      setDriverPassword(''); // Passwords are not fetched/shown for security
+      setDriverSpecialty(driver.specialty || 'General Assistance');
+      setDriverVehicleName(driver.vehicle?.name || 'Heavy Tow • Unit #402');
+      setDriverVehiclePlate(driver.vehicle?.plate || 'RD-RESC-9');
+      setDriverAvatar(driver.avatar || '');
+      setDriverStatus(driver.status || 'active');
+    } else {
+      // Adding Mode
+      setEditingDriver(null);
+      setDriverName('');
+      setDriverEmail('');
+      setDriverPhone('');
+      setDriverPassword('');
+      setDriverSpecialty('General Assistance');
+      setDriverVehicleName('Heavy Tow • Unit #402');
+      setDriverVehiclePlate('RD-RESC-9');
+      setDriverAvatar('');
+      setDriverStatus('active');
+    }
+    setIsDriverModalOpen(true);
+  };
+
+  const handleDriverSubmit = async (e) => {
+    e.preventDefault();
+    if (!driverName || !driverEmail || !driverPhone) {
+      triggerToast("⚠️ Name, Email, and Phone contact are required.", "warning");
+      return;
+    }
+    
+    setDriverSubmitLoading(true);
+    try {
+      const driverData = {
+        name: driverName,
+        email: driverEmail,
+        phone: driverPhone,
+        specialty: driverSpecialty,
+        vehicleName: driverVehicleName,
+        vehiclePlate: driverVehiclePlate,
+        avatar: driverAvatar,
+        status: driverStatus,
+        ...(driverPassword ? { password: driverPassword } : {})
+      };
+
+      let res;
+      if (editingDriver) {
+        // Edit Action
+        res = await updateDriverApi(editingDriver._id, driverData);
+        if (res && res.success) {
+          triggerToast("💚 Driver unit profile updated successfully!", "success");
+        }
+      } else {
+        // Add Action
+        res = await addDriverApi({
+          ...driverData,
+          password: driverPassword || '123456' // default password if not provided
+        });
+        if (res && res.success) {
+          triggerToast("💚 New Driver unit profile registered successfully in central roster!", "success");
+        }
+      }
+
+      setIsDriverModalOpen(false);
+      await fetchAdminData();
+    } catch (err) {
+      console.error("Driver submission failed:", err);
+      const errMsg = err.response?.data?.message || err.message || "Operation failed.";
+      triggerToast(`❌ Operation failed: ${errMsg}`, "error");
+    } finally {
+      setDriverSubmitLoading(false);
     }
   };
 
@@ -445,7 +540,16 @@ export default function Settings({ currentUser, setCurrentUser, triggerToast, se
                 <>
                   {/* Drivers Management */}
                   <div className="flex flex-col gap-3">
-                    <h4 className="font-label-caps text-[11px] text-primary tracking-widest font-bold">🛡️ MANAGE RESCUE FLEET DRIVERS</h4>
+                    <div className="flex justify-between items-center mb-1">
+                      <h4 className="font-label-caps text-[11px] text-primary tracking-widest font-bold">🛡️ MANAGE RESCUE FLEET DRIVERS</h4>
+                      <button
+                        onClick={() => handleOpenDriverModal()}
+                        className="py-1 px-3 rounded bg-primary/20 hover:bg-primary border border-primary/30 hover:text-white text-primary font-label-caps text-[9px] font-bold tracking-wider transition-all flex items-center gap-1 cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-[12px] font-bold">person_add</span>
+                        Register Driver
+                      </button>
+                    </div>
                     <div className="flex flex-col gap-2.5 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
                       {drivers.length === 0 ? (
                         <div className="text-xs text-on-surface-variant/50 py-4 bg-surface-container-low/30 rounded-lg p-4 border border-outline-variant/5">
@@ -457,18 +561,35 @@ export default function Settings({ currentUser, setCurrentUser, triggerToast, se
                             <div className="flex items-center gap-3 min-w-0">
                               <img src={driver.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDQvr_HDAe8dIuPOCeH_hCSd8oy2NmxlGvMzAXNKZDtXqxmAQgsaGSbBp5nFz1F94bhRK9iZRp1PDfy-7_3e-n4HIisgKFOcvr6pG4Cv4oPIneIbmFH9Sqz2u75z1w8iPk2Z5oty9UnXzkmiSdHTB3bl_fJa8WUNPXSIxYtC-S6m6-wYXVBvz6dJYp08B6AZbwAhF4TX5NrkjgjyvQvPkZQY-4drXs-3zXAg-CXmBGaSn1SE_x-a1PCjSgYqcK0sA0xhEeAkhUcRX4'} alt={driver.name} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
                               <div className="min-w-0">
-                                <p className="font-bold text-xs text-on-surface leading-none truncate">{driver.name}</p>
+                                <p className="font-bold text-xs text-on-surface leading-none truncate flex items-center gap-1.5 text-white">
+                                  {driver.name}
+                                  {driver.status === 'inactive' && (
+                                    <span className="text-[7px] bg-neutral-800 border border-neutral-700 text-neutral-400 px-1 py-0.2 rounded font-bold uppercase tracking-wider">
+                                      OFFLINE
+                                    </span>
+                                  )}
+                                </p>
                                 <p className="text-[10px] text-on-surface-variant/70 mt-1 leading-none truncate">
                                   {driver.specialty} • {driver.vehicle?.name || 'Unit #402'}
                                 </p>
                               </div>
                             </div>
-                            <button
-                              onClick={() => handleDeleteDriver(driver._id)}
-                              className="px-2.5 py-1 rounded bg-error/10 hover:bg-error border border-error/20 hover:border-error text-error hover:text-white font-label-caps text-[9px] font-bold transition-all shrink-0 cursor-pointer"
-                            >
-                              Purge Driver
-                            </button>
+                            <div className="flex gap-2 shrink-0">
+                              <button
+                                onClick={() => handleOpenDriverModal(driver)}
+                                className="px-2.5 py-1 rounded bg-secondary/15 hover:bg-secondary border border-secondary/20 hover:border-secondary text-secondary hover:text-white font-label-caps text-[9px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                              >
+                                <span className="material-symbols-outlined text-[10px] font-bold">edit</span>
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteDriver(driver._id)}
+                                className="px-2.5 py-1 rounded bg-error/10 hover:bg-error border border-error/20 hover:border-error text-error hover:text-white font-label-caps text-[9px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                              >
+                                <span className="material-symbols-outlined text-[10px] font-bold">delete</span>
+                                Purge
+                              </button>
+                            </div>
                           </div>
                         ))
                       )}
@@ -551,8 +672,209 @@ export default function Settings({ currentUser, setCurrentUser, triggerToast, se
           )}
 
         </div>
-
       </div>
+
+      {/* Tactical Driver Management Modal */}
+      {isDriverModalOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-background/80 backdrop-blur-md">
+          <div className="glass-panel max-w-lg w-full rounded-2xl p-6 relative overflow-hidden border-primary/20 shadow-2xl flex flex-col gap-5 bg-[#161616]">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-secondary via-primary to-secondary"></div>
+            
+            {/* Header */}
+            <div className="flex justify-between items-start">
+              <div>
+                <h2 className="text-xl font-headline-lg gradient-text font-bold tracking-wide flex items-center gap-2 text-white">
+                  <span className="material-symbols-outlined text-secondary animate-pulse">local_shipping</span>
+                  {editingDriver ? 'Modify Fleet Specialist' : 'Register Rescue Fleet Specialist'}
+                </h2>
+                <p className="font-body-sm text-[11px] text-on-surface-variant/80 uppercase tracking-wider mt-0.5">
+                  {editingDriver ? `Updating unit credentials for ${editingDriver.name}` : 'Provisioning new active rescue response asset'}
+                </p>
+              </div>
+              <button 
+                onClick={() => setIsDriverModalOpen(false)}
+                className="text-on-surface-variant/60 hover:text-on-surface transition-colors p-1"
+              >
+                <span className="material-symbols-outlined text-white">close</span>
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleDriverSubmit} className="flex flex-col gap-4 overflow-y-auto max-h-[450px] pr-1 custom-scrollbar">
+              
+              {/* Name */}
+              <div className="flex flex-col gap-1.5 text-left">
+                <label className="text-[10px] font-label-caps font-bold tracking-widest text-on-surface-variant">Full Name</label>
+                <input 
+                  type="text" 
+                  required
+                  value={driverName}
+                  onChange={(e) => setDriverName(e.target.value)}
+                  placeholder="e.g. Marcus Vance"
+                  className="bg-surface-container border border-outline-variant/30 text-on-surface rounded p-2.5 focus:outline-none focus:ring-1 focus:ring-primary text-xs text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+                {/* Email */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-label-caps font-bold tracking-widest text-on-surface-variant">Secure Email</label>
+                  <input 
+                    type="email" 
+                    required
+                    value={driverEmail}
+                    onChange={(e) => setDriverEmail(e.target.value)}
+                    placeholder="e.g. mvance@roadrescue.com"
+                    className="bg-surface-container border border-outline-variant/30 text-on-surface rounded p-2.5 focus:outline-none focus:ring-1 focus:ring-primary text-xs text-white"
+                  />
+                </div>
+
+                {/* Phone */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-label-caps font-bold tracking-widest text-on-surface-variant">Contact Phone</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={driverPhone}
+                    onChange={(e) => setDriverPhone(e.target.value)}
+                    placeholder="e.g. +1 (555) 242-2550"
+                    className="bg-surface-container border border-outline-variant/30 text-on-surface rounded p-2.5 focus:outline-none focus:ring-1 focus:ring-primary text-xs text-white"
+                  />
+                </div>
+              </div>
+
+              {/* Password / credentials override */}
+              <div className="flex flex-col gap-1.5 text-left">
+                <label className="text-[10px] font-label-caps font-bold tracking-widest text-on-surface-variant">
+                  {editingDriver ? 'Credentials Override Passphrase (Optional)' : 'Roster Account Password'}
+                </label>
+                <input 
+                  type="password" 
+                  required={!editingDriver}
+                  value={driverPassword}
+                  onChange={(e) => setDriverPassword(e.target.value)}
+                  placeholder={editingDriver ? "Leave blank to keep current password..." : "Min 6 characters..."}
+                  className="bg-surface-container border border-outline-variant/30 text-on-surface rounded p-2.5 focus:outline-none focus:ring-1 focus:ring-primary text-xs text-white"
+                />
+              </div>
+
+              {/* Specialty & Status */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-label-caps font-bold tracking-widest text-on-surface-variant">Fleet Specialty</label>
+                  <select
+                    value={driverSpecialty}
+                    onChange={(e) => setDriverSpecialty(e.target.value)}
+                    className="bg-surface-container border border-outline-variant/30 text-on-surface rounded p-2.5 focus:outline-none focus:ring-1 focus:ring-primary text-xs text-white cursor-pointer"
+                  >
+                    <option value="General Assistance">General Assistance</option>
+                    <option value="Towing Specialist">Towing Specialist</option>
+                    <option value="Battery Diagnostics">Battery Diagnostics</option>
+                    <option value="Mobile L3 Charging">Mobile L3 Charging</option>
+                    <option value="Engine Diagnostics">Engine Diagnostics</option>
+                    <option value="Flat Tire Service">Flat Tire Service</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-label-caps font-bold tracking-widest text-on-surface-variant">Roster Status</label>
+                  <select
+                    value={driverStatus}
+                    onChange={(e) => setDriverStatus(e.target.value)}
+                    className="bg-surface-container border border-outline-variant/30 text-on-surface rounded p-2.5 focus:outline-none focus:ring-1 focus:ring-primary text-xs text-white cursor-pointer"
+                  >
+                    <option value="active">Active / Available</option>
+                    <option value="inactive">Inactive / Offline</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Vehicle Information */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-label-caps font-bold tracking-widest text-on-surface-variant">Vehicle Model Name</label>
+                  <input 
+                    type="text" 
+                    value={driverVehicleName}
+                    onChange={(e) => setDriverVehicleName(e.target.value)}
+                    placeholder="e.g. Heavy Tow • Unit #402"
+                    className="bg-surface-container border border-outline-variant/30 text-on-surface rounded p-2.5 focus:outline-none focus:ring-1 focus:ring-primary text-xs text-white"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-label-caps font-bold tracking-widest text-on-surface-variant">License Plate Number</label>
+                  <input 
+                    type="text" 
+                    value={driverVehiclePlate}
+                    onChange={(e) => setDriverVehiclePlate(e.target.value)}
+                    placeholder="e.g. RD-RESC-9"
+                    className="bg-surface-container border border-outline-variant/30 text-on-surface rounded p-2.5 focus:outline-none focus:ring-1 focus:ring-primary text-xs text-white"
+                  />
+                </div>
+              </div>
+
+              {/* Avatar Selection */}
+              <div className="flex flex-col gap-2.5 bg-surface-container-low/40 p-3 rounded-lg border border-outline-variant/10 text-left">
+                <span className="text-[9px] font-label-caps font-bold tracking-widest text-on-surface-variant/70 uppercase">Select Preset Premium Avatar:</span>
+                <div className="flex gap-4 mt-1">
+                  {avatarPresets.map((preset) => (
+                    <button
+                      key={preset.name}
+                      type="button"
+                      onClick={() => setDriverAvatar(preset.url)}
+                      title={preset.name}
+                      className={`w-10 h-10 rounded-full overflow-hidden border-2 relative hover:scale-105 transition-transform flex-shrink-0 ${
+                        driverAvatar === preset.url ? 'border-primary shadow-[0_0_10px_rgba(0,242,255,0.4)]' : 'border-outline-variant/40 hover:border-primary/50'
+                      }`}
+                    >
+                      <img src={preset.url} alt={preset.name} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-col gap-1 mt-1.5">
+                  <span className="text-[9px] font-label-caps font-bold tracking-widest text-on-surface-variant/70 uppercase">Or Custom Image URL:</span>
+                  <input 
+                    type="url"
+                    value={driverAvatar}
+                    onChange={(e) => setDriverAvatar(e.target.value)}
+                    placeholder="https://example.com/driver-photo.jpg"
+                    className="bg-surface-container border border-outline-variant/30 text-on-surface rounded p-2 focus:outline-none focus:ring-1 focus:ring-primary text-[10px] text-white"
+                  />
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-3 mt-2 border-t border-outline-variant/15 pt-4">
+                <button 
+                  type="button"
+                  onClick={() => setIsDriverModalOpen(false)}
+                  className="glass-panel text-on-surface hover:bg-surface-variant px-4 py-2 rounded-lg font-label-caps text-[10px] font-bold transition-all text-white border border-outline-variant/30 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={driverSubmitLoading}
+                  className="px-4 py-2 rounded bg-gradient-to-r from-secondary to-primary text-white font-label-caps text-[10px] font-bold tracking-wider hover:shadow-[0_0_15px_rgba(0,242,255,0.4)] transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  {driverSubmitLoading ? (
+                    <>
+                      <span className="material-symbols-outlined text-[14px] animate-spin">cached</span>
+                      Syncing...
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-[14px]">save</span>
+                      {editingDriver ? 'Save Specifications' : 'Commit to Roster'}
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

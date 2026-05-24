@@ -12,6 +12,8 @@ import {
   getUsers,
   toggleBlockUser,
   deleteUser,
+  createDriver,
+  updateDriver,
   deleteDriver,
   purgeSystemData
 } from '../controllers/authController.js';
@@ -33,6 +35,8 @@ router.put('/update-profile', protect, updateProfile);
 router.get('/users', protect, authorize('admin'), getUsers);
 router.put('/users/:id/block', protect, authorize('admin'), toggleBlockUser);
 router.delete('/users/:id', protect, authorize('admin'), deleteUser);
+router.post('/drivers', protect, authorize('admin'), createDriver);
+router.put('/drivers/:id', protect, authorize('admin'), updateDriver);
 router.delete('/drivers/:id', protect, authorize('admin'), deleteDriver);
 router.delete('/system/purge', protect, authorize('admin'), purgeSystemData);
 

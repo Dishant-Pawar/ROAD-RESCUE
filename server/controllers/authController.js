@@ -422,6 +422,89 @@ export const deleteDriver = async (req, res, next) => {
   }
 };
 
+// @desc    Create a driver/mechanic profile (Admin)
+// @route   POST /api/auth/drivers
+// @access  Private/Admin
+export const createDriver = async (req, res, next) => {
+  try {
+    const { name, email, password, phone, specialty, vehicleName, vehiclePlate, avatar, status } = req.body;
+
+    const exists = await Mechanic.findOne({ email });
+    if (exists) {
+      return res.status(400).json({ success: false, message: 'Driver already exists with this email' });
+    }
+
+    const mechanic = await Mechanic.create({
+      name,
+      email,
+      password: password || '123456',
+      phone,
+      avatar: avatar || '',
+      status: status || 'active',
+      specialty: specialty || 'General Assistance',
+      vehicle: {
+        name: vehicleName || 'Heavy Tow • Unit #402',
+        plate: vehiclePlate || 'RD-RESC-9',
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Driver unit profile registered successfully in roster.',
+      data: mechanic
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update driver/mechanic profile (Admin)
+// @route   PUT /api/auth/drivers/:id
+// @access  Private/Admin
+export const updateDriver = async (req, res, next) => {
+  try {
+    const { name, email, phone, specialty, vehicleName, vehiclePlate, avatar, status, password } = req.body;
+
+    const mechanic = await Mechanic.findById(req.params.id);
+    if (!mechanic) {
+      return res.status(404).json({ success: false, message: 'Driver not found' });
+    }
+
+    // Check if email is being updated to an existing one
+    if (email && email !== mechanic.email) {
+      const exists = await Mechanic.findOne({ email });
+      if (exists) {
+        return res.status(400).json({ success: false, message: 'Another driver already exists with this email' });
+      }
+      mechanic.email = email;
+    }
+
+    if (name) mechanic.name = name;
+    if (phone) mechanic.phone = phone;
+    if (specialty) mechanic.specialty = specialty;
+    if (avatar !== undefined) mechanic.avatar = avatar;
+    if (status) mechanic.status = status;
+    if (password) mechanic.password = password;
+
+    if (vehicleName !== undefined || vehiclePlate !== undefined) {
+      mechanic.vehicle = {
+        name: vehicleName !== undefined ? vehicleName : mechanic.vehicle.name,
+        plate: vehiclePlate !== undefined ? vehiclePlate : mechanic.vehicle.plate,
+      };
+    }
+
+    await mechanic.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Driver unit profile updated successfully.',
+      data: mechanic
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Purge all database operations history (incidents, payments, notifications, emergency reports)
 // @route   DELETE /api/auth/system/purge
 // @access  Private/Admin

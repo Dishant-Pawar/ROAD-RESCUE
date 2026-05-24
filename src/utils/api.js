@@ -195,6 +195,16 @@ export const deleteUserApi = async (id) => {
   return res.data;
 };
 
+export const addDriverApi = async (driverData) => {
+  const res = await api.post('/api/auth/drivers', driverData);
+  return res.data;
+};
+
+export const updateDriverApi = async (id, driverData) => {
+  const res = await api.put(`/api/auth/drivers/${id}`, driverData);
+  return res.data;
+};
+
 export const deleteDriverApi = async (id) => {
   const res = await api.delete(`/api/auth/drivers/${id}`);
   return res.data;
