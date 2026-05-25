@@ -83,9 +83,6 @@ export const createRequest = async (req, res, next) => {
     // Find active mechanics who are not currently busy
     const busyMechanicIds = await ServiceRequest.find({ status: 'Assigned' }).distinct('mechanic');
     let mechanic = await Mechanic.findOne({ status: 'active', isApproved: true, _id: { $nin: busyMechanicIds } });
-    if (!mechanic) {
-      mechanic = await Mechanic.findOne({ status: 'active', isApproved: true });
-    }
 
     // Fallback if no mechanics exist in database at all
     if (!mechanic) {
@@ -223,9 +220,6 @@ export const assignRequest = async (req, res, next) => {
       // Find active mechanics who are not currently busy
       const busyMechanicIds = await ServiceRequest.find({ status: 'Assigned' }).distinct('mechanic');
       mechanic = await Mechanic.findOne({ status: 'active', isApproved: true, _id: { $nin: busyMechanicIds } });
-      if (!mechanic) {
-        mechanic = await Mechanic.findOne({ status: 'active', isApproved: true });
-      }
     }
 
     // Fallback if no mechanics exist in database at all
