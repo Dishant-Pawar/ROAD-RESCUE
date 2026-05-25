@@ -151,16 +151,6 @@ export default function AdminPanel({
             ${statusLabel}
           </div>
           <div class="text-[11px] text-white/70">
-            <div class="mb-2 bg-white/5 p-1.5 rounded border border-white/5 space-y-0.5">
-              <p class="font-bold text-white/90 text-xs flex items-center gap-1">
-                <span class="material-symbols-outlined text-[12px]" style="font-size:12px;">person</span>
-                ${ticket.user?.name || 'Guest Client'}
-              </p>
-              <p class="text-[10px] text-secondary flex items-center gap-1">
-                <span class="material-symbols-outlined text-[10px]" style="font-size:10px;">call</span>
-                ${ticket.user?.phone || '+1 (555) 000-0000'}
-              </p>
-            </div>
             <p class="font-bold text-white/95 text-xs mt-0.5">${ticket.type}</p>
             <p class="mt-1 flex items-center gap-1"><span class="material-symbols-outlined text-[12px]" style="font-size:12px;">location_on</span> ${ticket.loc}</p>
             ${isAssigned ? `
