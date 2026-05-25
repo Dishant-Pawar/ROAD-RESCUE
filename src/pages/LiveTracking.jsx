@@ -85,7 +85,24 @@ export default function LiveTracking({ setPage, activeIncident, addChatMessage, 
 
     // Driver Marker
     const driverMarker = L.marker([startLat, startLng], { icon: vehicleIcon })
-      .bindPopup(`<div class="text-white font-semibold text-xs py-1">Unit #402 (${activeIncident.driverName || 'David R.'}) is en route.</div>`)
+      .bindPopup(`
+        <div class="flex flex-col gap-1 text-white font-sans py-1 min-w-[160px]">
+          <div class="flex items-center gap-1.5 border-b border-white/10 pb-1.5 mb-1.5">
+            <span class="material-symbols-outlined text-primary text-[16px]" style="font-size: 15px;">local_shipping</span>
+            <span class="font-bold text-xs text-white">${activeIncident.vehicle || 'Heavy Tow • Unit #402'}</span>
+          </div>
+          <div class="text-[11px] text-white/80 space-y-1">
+            <p class="font-bold text-white/95 text-xs flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[14px]" style="font-size: 13px;">person</span>
+              ${activeIncident.driverName || 'David R.'}
+            </p>
+            <p class="flex items-center gap-1.5 text-primary-container font-semibold">
+              <span class="material-symbols-outlined text-[14px]" style="font-size: 13px;">call</span>
+              ${activeIncident.driverPhone || '+1 (555) 019-2834'}
+            </p>
+          </div>
+        </div>
+      `)
       .addTo(map);
 
     driverMarkerRef.current = driverMarker;

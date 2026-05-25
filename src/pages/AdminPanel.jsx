@@ -188,7 +188,25 @@ export default function AdminPanel({
         markersRef.current.push(breakdownMarker);
         
         const towTruckMarker = L.marker([driverLat, driverLng], { icon: vehicleIcon })
-          .bindPopup(`<div class="text-white font-semibold text-xs py-1">Unit #${ticket.vehicle || 'Tow Truck'} (${ticket.driverName || 'David R.'}) is en route to Ticket #${ticket.ticketId || ticket.id}.</div>`)
+          .bindPopup(`
+            <div class="flex flex-col gap-1 text-white font-sans py-1 min-w-[160px]">
+              <div class="flex items-center gap-1.5 border-b border-white/10 pb-1.5 mb-1.5">
+                <span class="material-symbols-outlined text-primary text-[16px]" style="font-size: 15px;">local_shipping</span>
+                <span class="font-bold text-xs text-white">${ticket.vehicle || 'Heavy Tow • Unit #402'}</span>
+              </div>
+              <div class="text-[11px] text-white/80 space-y-1">
+                <p class="font-bold text-white/95 text-xs flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[14px]" style="font-size: 13px;">person</span>
+                  ${ticket.driverName || 'David R.'}
+                </p>
+                <p class="flex items-center gap-1.5 text-primary-container font-semibold">
+                  <span class="material-symbols-outlined text-[14px]" style="font-size: 13px;">call</span>
+                  ${ticket.driverPhone || '+1 (555) 019-2834'}
+                </p>
+                <p class="text-[9px] text-white/40 mt-1 uppercase font-medium">Assigned: Ticket #${ticket.ticketId || ticket.id}</p>
+              </div>
+            </div>
+          `)
           .addTo(map);
         markersRef.current.push(towTruckMarker);
         
