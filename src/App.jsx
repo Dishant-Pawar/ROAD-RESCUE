@@ -713,6 +713,7 @@ export default function App() {
             triggerSOS={triggerSOS}
             cancelIncident={cancelIncident}
             switchAccount={switchAccount}
+            currentUser={currentUser}
           />
         );
       case 'tracking':

@@ -80,6 +80,62 @@ export const createRequest = async (req, res, next) => {
       }
     }
 
+    // Find active mechanics who are not currently busy
+    const busyMechanicIds = await ServiceRequest.find({ status: 'Assigned' }).distinct('mechanic');
+    let mechanic = await Mechanic.findOne({ status: 'active', isApproved: true, _id: { $nin: busyMechanicIds } });
+    if (!mechanic) {
+      mechanic = await Mechanic.findOne({ status: 'active', isApproved: true });
+    }
+
+    // Fallback if no mechanics exist in database at all
+    if (!mechanic) {
+      mechanic = {
+        _id: null,
+        name: 'David R.',
+        phone: '+1 (555) 019-2834',
+        avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuByN0gReMf2EVTRsGvzJIfQkt4dNkMtXxe95dlSRKbikVzLy0AcAOwpM8ZcNBrFQ_I1kRs1s2PtxHKbUJOYvRCsPXgsbIX6REt6qWqmgb_wcVrGeD5fgoT_mjpGjtNTGEKoxy9KYXCDW5Ox6kZjGV5MtsQWklnzS9LmIWqE6Cm6gyUOKmeVudbUAPl0iV_uBYpPci72bBQXJB0QeCEejv0N6T4A9vOMdgQ69sVufeLcbdn-9BSy4HrLTxe1RK7Sug46W8CnkJcD7f0',
+        vehicle: { name: 'Heavy Tow • Unit #402', plate: 'RD-RESC-9' }
+      };
+    }
+
+    // Dynamic ETA based on dispatcher proximity
+    const eta = mechanic.name === 'Marcus T.' ? 5 : 12; 
+
+    // Context-Aware Dynamic Dispatch Telemetry Proximity Rule
+    const breakdownLat = randomLat;
+    const breakdownLng = randomLng;
+    
+    // Classify remote/mountainous non-crowded areas vs. standard public/urban locations
+    const isRemoteArea = 
+      issue === 'mud' || 
+      issue === 'flood' ||
+      issue === 'terrain' ||
+      (type && type.toLowerCase().includes('mud')) ||
+      (type && type.toLowerCase().includes('flood')) ||
+      (loc && (
+        loc.toLowerCase().includes('mountain') ||
+        loc.toLowerCase().includes('forest') ||
+        loc.toLowerCase().includes('trail') ||
+        loc.toLowerCase().includes('hills') ||
+        loc.toLowerCase().includes('bypass')
+      ));
+      
+    const angle = Math.random() * Math.PI * 2;
+    let distanceDeg;
+    
+    if (isRemoteArea) {
+      // Remote / non-crowded / mountainous area: No driver nearby, starts further away up to 30km-50km
+      // 30 km to 50 km ~ 0.27 to 0.45 degrees offset
+      distanceDeg = 0.27 + Math.random() * 0.18;
+    } else {
+      // Urban / Public location: Default to extremely close proximity of 1km to 3km
+      // 1 km to 3 km ~ 0.009 to 0.027 degrees offset
+      distanceDeg = 0.009 + Math.random() * 0.018;
+    }
+    
+    const startLat = breakdownLat + Math.sin(angle) * distanceDeg;
+    const startLng = breakdownLng + Math.cos(angle) * distanceDeg;
+
     const newTicket = await ServiceRequest.create({
       ticketId,
       user: req.user ? req.user._id : null,
@@ -91,19 +147,47 @@ export const createRequest = async (req, res, next) => {
         lng: randomLng
       },
       req: reqType || 'Standard Rescue',
-      status: 'Pending',
+      status: 'Assigned',
+      assigned: true,
+      eta,
+      mechanic: mechanic._id || null,
+      driverName: mechanic.name,
+      driverPhone: mechanic.phone,
+      driverAvatar: mechanic.avatar || '',
+      driverLocation: {
+        lat: startLat,
+        lng: startLng
+      },
+      vehicle: mechanic.vehicle ? mechanic.vehicle.name : 'Heavy Tow • Unit #402',
       customerVehicle: customerVehicleStr,
       chatHistory: [
         {
           sender: 'system',
           text: `🚨 Emergency Satellite Beacon activated. Frequencies locked. Awaiting logistics dispatcher assignment...`,
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        },
+        {
+          sender: mechanic.name === 'Marcus T.' ? 'mechanic' : 'david',
+          text: `This is ${mechanic.name} heavy duty specialist. I've locked on your rescue beacon and I'm deploying the flatbed unit now. ETA ${eta} minutes. Are you in a safe spot?`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]
     });
 
+    if (newTicket.user) {
+      await Notification.create({
+        recipient: newTicket.user,
+        recipientType: 'User',
+        title: 'Specialist Dispatched',
+        message: `Rescue Unit ${mechanic.name} (${newTicket.vehicle}) is en route. ETA ${newTicket.eta} mins.`,
+        type: 'info'
+      });
+    }
+
     if (req.io) {
       req.io.emit('ticket_created', newTicket);
+      req.io.emit('ticket_assigned', newTicket);
+      req.io.emit('ticket_updated', newTicket);
     }
 
     res.status(201).json({ success: true, data: newTicket });

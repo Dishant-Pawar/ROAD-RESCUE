@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export default function EmergencySOS({ setPage, activeIncident, triggerSOS, cancelIncident, switchAccount }) {
+export default function EmergencySOS({ setPage, activeIncident, triggerSOS, cancelIncident, switchAccount, currentUser }) {
   const [selectedIssue, setSelectedIssue] = useState('battery');
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [uploadedPhoto, setUploadedPhoto] = useState(null);
@@ -117,12 +117,14 @@ export default function EmergencySOS({ setPage, activeIncident, triggerSOS, canc
             )}
 
             {/* Cancel Button */}
-            <button
-              onClick={() => cancelIncident(activeIncident.id)}
-              className="text-on-surface-variant/60 hover:text-error transition-colors font-label-caps text-label-caps text-xs py-2 w-fit mx-auto mt-4"
-            >
-              Cancel Emergency Request
-            </button>
+            {currentUser?.role === 'admin' && (
+              <button
+                onClick={() => cancelIncident(activeIncident.id)}
+                className="text-on-surface-variant/60 hover:text-error transition-colors font-label-caps text-label-caps text-xs py-2 w-fit mx-auto mt-4"
+              >
+                Cancel Emergency Request
+              </button>
+            )}
 
           </div>
 
