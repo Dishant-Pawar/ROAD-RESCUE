@@ -19,7 +19,7 @@ export const getRequests = async (req, res, next) => {
       query = { status: req.query.status };
     }
 
-    const requests = await ServiceRequest.find(query).sort({ createdAt: -1 });
+    const requests = await ServiceRequest.find(query).populate('user').sort({ createdAt: -1 });
     res.status(200).json({ success: true, count: requests.length, data: requests });
   } catch (error) {
     next(error);
@@ -38,7 +38,7 @@ export const getActiveRequest = async (req, res, next) => {
       query.user = req.user._id;
     }
     
-    const active = await ServiceRequest.findOne(query).sort({ createdAt: -1 });
+    const active = await ServiceRequest.findOne(query).populate('user').sort({ createdAt: -1 });
     res.status(200).json({ success: true, data: active });
   } catch (error) {
     next(error);
@@ -184,6 +184,8 @@ export const createRequest = async (req, res, next) => {
       });
     }
 
+    await newTicket.populate('user');
+
     if (req.io) {
       req.io.emit('ticket_created', newTicket);
       req.io.emit('ticket_assigned', newTicket);
@@ -307,6 +309,8 @@ export const assignRequest = async (req, res, next) => {
       });
     }
 
+    await ticket.populate('user');
+
     if (req.io) {
       req.io.emit('ticket_assigned', ticket);
       req.io.emit('ticket_updated', ticket);
@@ -357,6 +361,8 @@ export const completeRequest = async (req, res, next) => {
       });
     }
 
+    await ticket.populate('user');
+
     if (req.io) {
       req.io.emit('ticket_completed', ticket);
       req.io.emit('ticket_updated', ticket);
@@ -382,6 +388,8 @@ export const cancelRequest = async (req, res, next) => {
 
     ticket.status = 'Cancelled';
     await ticket.save();
+
+    await ticket.populate('user');
 
     if (req.io) {
       req.io.emit('ticket_cancelled', ticket);
@@ -455,12 +463,16 @@ export const addChatMessage = async (req, res, next) => {
           });
           await refreshedTicket.save();
 
+          await refreshedTicket.populate('user');
+
           if (req.io) {
             req.io.emit('ticket_updated', refreshedTicket);
           }
         }
       }, 1500);
     }
+
+    await ticket.populate('user');
 
     res.status(200).json({ success: true, data: ticket });
   } catch (error) {
