@@ -8,6 +8,9 @@ import Notification from '../models/Notification.js';
 import EmergencyReport from '../models/EmergencyReport.js';
 import ServiceRequest from '../models/ServiceRequest.js';
 
+// ✅ Strict admin whitelist — only these emails can ever hold the admin role
+const ADMIN_WHITELIST = ['a90685766@gmail.com', 'amegh2316@gmail.com'];
+
 // Helper to generate JWT token and respond
 const sendTokenResponse = (user, statusCode, res) => {
   const token = jwt.sign(
@@ -145,10 +148,15 @@ export const loginMechanic = async (req, res, next) => {
 
 // @desc    Register an admin
 // @route   POST /api/auth/register-admin
-// @access  Public
+// @access  Restricted — whitelist only
 export const registerAdmin = async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
+
+    // Only whitelisted emails can register as admin
+    if (!email || !ADMIN_WHITELIST.includes(email.toLowerCase())) {
+      return res.status(403).json({ success: false, message: '🔒 Access Denied: This email is not authorized for admin registration.' });
+    }
 
     const exists = await Admin.findOne({ email });
     if (exists) {
@@ -169,13 +177,18 @@ export const registerAdmin = async (req, res, next) => {
 
 // @desc    Login admin
 // @route   POST /api/auth/login-admin
-// @access  Public
+// @access  Restricted — whitelist only
 export const loginAdmin = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ success: false, message: 'Please provide an email and password' });
+    }
+
+    // Only whitelisted emails can log in as admin
+    if (!ADMIN_WHITELIST.includes(email.toLowerCase())) {
+      return res.status(403).json({ success: false, message: '🔒 Access Denied: This email is not authorized for admin access.' });
     }
 
     const admin = await Admin.findOne({ email }).select('+password');
@@ -304,8 +317,8 @@ export const googleLogin = async (req, res, next) => {
       picture = decoded.picture;
     }
 
-    // Classification Rule: email a90685766@gmail.com is Admin, all others are User
-    const isAdminEmail = email.toLowerCase() === 'a90685766@gmail.com';
+    // Classification Rule: only whitelisted emails are Admin, all others are User
+    const isAdminEmail = ADMIN_WHITELIST.includes(email.toLowerCase());
 
     let user;
 

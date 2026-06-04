@@ -1,5 +1,6 @@
 {
-  "watch": ["server"],
+  "watch": ["server", ".env"],
   "ignore": ["src", "dist", "node_modules", "package.json", "package-lock.json"],
-  "ext": "js,mjs,cjs,json"
+  "ext": "js,mjs,cjs,json,env"
 }
+
